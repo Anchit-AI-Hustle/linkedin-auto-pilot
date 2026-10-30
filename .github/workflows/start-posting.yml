@@ -1,0 +1,37 @@
+name: Start posting
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: linkedin-post
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: python -W ignore test_post.py
+      - name: Check the LinkedIn token works
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        run: python post.py --check
+      - name: Unpause the series
+        run: git rm -q --ignore-unmatch PAUSE
+      - name: Publish Day 0 now
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          DRY_RUN: "false"
+        run: python post.py
+      - name: Save the started state
+        run: |
+          git config user.name "linkedin-auto-pilot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "Start posting: Day 0 published" && git push)
