@@ -1,0 +1,37 @@
+name: Daily LinkedIn post
+
+on:
+  schedule:
+    - cron: "30 3 * * *"  # 09:00 IST every day
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print only, post nothing)"
+        default: "true"
+
+permissions:
+  contents: write
+
+concurrency: linkedin-post
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: python -W ignore test_post.py
+      - name: Publish today's post
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: python post.py
+      - name: Record what was posted
+        run: |
+          git config user.name "linkedin-auto-pilot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add posted.json
+          git diff --cached --quiet || (git commit -m "Posted $(date -u +%F)" && git push)
