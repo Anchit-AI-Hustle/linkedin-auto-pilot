@@ -1,6 +1,6 @@
 # linkedin-auto-pilot
 
-A small robot that publishes the **#20BuildsIn20Days** LinkedIn series: 22 approved posts, one a day at 9:00 AM IST.
+A small robot that publishes the **#20ProductsIn20Days** LinkedIn series: 22 approved posts, one a day at 9:00 AM IST.
 
 It is publish-only. It posts to my own profile through LinkedIn's official Posts API and never likes, comments on other people's posts, messages or connects. I reply to every comment myself.
 

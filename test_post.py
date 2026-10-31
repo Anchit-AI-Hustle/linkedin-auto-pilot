@@ -15,8 +15,8 @@ class LittleText(unittest.TestCase):
         self.assertEqual(ap.to_little_text("Plans (Basic) [x] a_b"), r"Plans \(Basic\) \[x\] a\_b")
 
     def test_hashtags_become_real_hashtags(self):
-        self.assertEqual(ap.to_little_text("#ProductManagement #20BuildsIn20Days"),
-                         r"{hashtag|\#|ProductManagement} {hashtag|\#|20BuildsIn20Days}")
+        self.assertEqual(ap.to_little_text("#ProductManagement #20ProductsIn20Days"),
+                         r"{hashtag|\#|ProductManagement} {hashtag|\#|20ProductsIn20Days}")
 
     def test_plain_text_is_untouched(self):
         self.assertEqual(ap.to_little_text("Scaled ₹15L to ₹80L → done"), "Scaled ₹15L to ₹80L → done")
@@ -91,7 +91,7 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
             self.assertEqual(body["author"], "urn:li:person:abc123")
             self.assertEqual(body["visibility"], "PUBLIC")
             self.assertEqual(body["lifecycleState"], "PUBLISHED")
-            self.assertIn("{hashtag|\\#|20BuildsIn20Days}", body["commentary"])
+            self.assertIn("{hashtag|\\#|20ProductsIn20Days}", body["commentary"])
             state = json.load(open(ap.STATE))
             self.assertEqual(state["0"]["urn"], "urn:li:share:999")
             n = len(calls)
