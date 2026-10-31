@@ -1,8 +1,8 @@
 name: Daily LinkedIn post
 
+# Posting now happens only after approval on WhatsApp (see review-tick.yml).
+# This workflow is kept for manual dry runs only.
 on:
-  schedule:
-    - cron: "30 3 * * *"  # 09:00 IST every day
   workflow_dispatch:
     inputs:
       dry_run:

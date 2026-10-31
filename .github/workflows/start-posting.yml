@@ -24,14 +24,9 @@ jobs:
         run: python post.py --check
       - name: Unpause the series
         run: git rm -q --ignore-unmatch PAUSE
-      - name: Publish Day 0 now
-        env:
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          DRY_RUN: "false"
-        run: python post.py
       - name: Save the started state
         run: |
           git config user.name "linkedin-auto-pilot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || (git commit -m "Start posting: Day 0 published" && git push)
+          git diff --cached --quiet || (git commit -m "Start posting: review loop on" && git push)

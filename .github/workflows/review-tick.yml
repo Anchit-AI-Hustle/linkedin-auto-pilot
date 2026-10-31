@@ -1,0 +1,17 @@
+name: WhatsApp review tick
+
+on:
+  schedule:
+    - cron: "30 * * * *"   # every hour on the hour, IST (UTC+5:30)
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tick the review service
+        env:
+          TICK_URL: ${{ secrets.REVIEW_TICK_URL }}
+          TICK_SECRET: ${{ secrets.TICK_SECRET }}
+        run: |
+          curl -fsS -X POST "$TICK_URL" -H "Authorization: Bearer $TICK_SECRET"
