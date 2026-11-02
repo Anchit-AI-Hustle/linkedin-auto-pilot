@@ -45,8 +45,9 @@ def check_rewrite(original, feedback, rewrite):
 
 
 class Review:
-    def __init__(self, store, whatsapp, publish, rewrite, owner):
+    def __init__(self, store, whatsapp, publish, rewrite, owner, refresh=None):
         self.store, self.wa, self.publish, self.rewrite, self.owner = store, whatsapp, publish, rewrite, owner
+        self.refresh = refresh   # refresh(post) -> (draft, notes): live checks before review
 
     # ---------------------------------------------------------------- helpers
     def _next_post(self):
@@ -63,6 +64,8 @@ class Review:
         return t - datetime.datetime.fromisoformat(last) < datetime.timedelta(hours=23, minutes=30)
 
     def _send_draft(self, st, intro):
+        if st.get("notes"):
+            intro += "\n\nBefore you approve:\n" + "\n".join("• " + n for n in st["notes"])
         self.wa.text(self.owner, intro)
         self.wa.text(self.owner, st["draft"])
         self.wa.buttons(self.owner, f"Day {st['day']}: {st['title']}. Post it?", BUTTONS)
@@ -95,8 +98,11 @@ class Review:
                 draft = st["draft"]            # keep earlier edits to the same post
             else:
                 draft = p["post"]
+            notes = []
+            if self.refresh:
+                draft, notes = self.refresh({**p, "post": draft})
             last = (st or {}).get("last_inbound")
-            st = {"cycle": today, "day": p["day"], "title": p["title"], "draft": draft,
+            st = {"cycle": today, "day": p["day"], "title": p["title"], "draft": draft, "notes": notes,
                   "status": "waiting", "reminders": 0, "shown": False, "last_inbound": last}
             if self._window_open(st, t):
                 st["shown"] = True

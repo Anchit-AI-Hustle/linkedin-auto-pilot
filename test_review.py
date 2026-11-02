@@ -194,5 +194,16 @@ class Replies(unittest.TestCase):
         self.assertEqual(published, [])
 
 
+class LiveRefresh(unittest.TestCase):
+    def test_refreshed_draft_and_notes_reach_whatsapp(self):
+        store, wa = FakeStore(), FakeWA()
+        refresh = lambda p: (p["post"] + " Now 3 languages.", ["Updated from the live site: 3 languages."])
+        r = rv.Review(store, wa, lambda t: "urn", lambda d, f: d, OWNER, refresh=refresh)
+        opened(store)
+        r.tick(at(2, 0))
+        self.assertIn("Now 3 languages.", store.st["draft"])
+        self.assertTrue(any("Before you approve" in b for k, _, b in wa.sent if k == "text"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

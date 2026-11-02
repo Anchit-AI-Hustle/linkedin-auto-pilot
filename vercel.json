@@ -1,5 +1,5 @@
 {
   "functions": {
-    "api/*.py": { "includeFiles": "{post.py,review.py,adapters.py}" }
+    "api/*.py": { "includeFiles": "{post.py,review.py,adapters.py,live.py}", "maxDuration": 60 }
   }
 }

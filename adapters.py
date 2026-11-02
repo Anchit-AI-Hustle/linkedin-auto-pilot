@@ -142,17 +142,21 @@ REWRITE_RULES = """You edit LinkedIn posts for Anchit Tandon. Apply the feedback
 Rules: keep every fact, link and hashtag unless the feedback says otherwise. Never add numbers, results or claims that are not in the post or the feedback. No em dashes or en dashes. Keep the first two lines explaining what the post is about. Stay under 2,800 characters."""
 
 
-def claude_rewrite(env=os.environ, http=_http):
-    def rewrite(draft, feedback):
+def claude_ask(env=os.environ, http=_http):
+    def ask(system, user):
         status, out = http("POST", "https://api.anthropic.com/v1/messages",
                            {"x-api-key": env["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01"},
-                           {"model": env.get("ANTHROPIC_MODEL", "claude-sonnet-5-5"), "max_tokens": 2000,
-                            "system": REWRITE_RULES,
-                            "messages": [{"role": "user", "content": f"POST:\n{draft}\n\nFEEDBACK:\n{feedback}"}]})
+                           {"model": env.get("ANTHROPIC_MODEL", "claude-sonnet-5-5"), "max_tokens": 2500,
+                            "system": system, "messages": [{"role": "user", "content": user}]})
         if status >= 300:
-            raise RuntimeError(f"Rewrite failed ({status})")
+            raise RuntimeError(f"Claude request failed ({status})")
         return "".join(b.get("text", "") for b in out.get("content", []) if b.get("type") == "text").strip()
-    return rewrite
+    return ask
+
+
+def claude_rewrite(env=os.environ, http=_http):
+    ask = claude_ask(env, http)
+    return lambda draft, feedback: ask(REWRITE_RULES, f"POST:\n{draft}\n\nFEEDBACK:\n{feedback}")
 
 
 # ---------------------------------------------------------------- LinkedIn

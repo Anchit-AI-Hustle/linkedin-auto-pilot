@@ -7,13 +7,16 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import adapters as ad  # noqa: E402
+import live            # noqa: E402
 import review as rv    # noqa: E402
 
 
 def build():
     env = os.environ
+    ask = ad.claude_ask(env)
     return rv.Review(ad.GitHubStore(env), ad.WhatsApp(env), ad.linkedin_publish(env),
-                     ad.claude_rewrite(env), env["OWNER_WHATSAPP"])
+                     ad.claude_rewrite(env), env["OWNER_WHATSAPP"],
+                     refresh=lambda post: live.refresh(post, ask=ask))
 
 
 class handler(BaseHTTPRequestHandler):

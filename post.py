@@ -55,6 +55,8 @@ def guard(post):
         problems.append("post still contains a placeholder")
     if "\u2014" in text or "\u2013" in text:
         problems.append("post contains an em or en dash")
+    if re.search(r"github\.com|githubusercontent\.com|github\.io", text + " " + post.get("first_comment", ""), re.I):
+        problems.append("post links to GitHub; only website and app links are allowed")
     return problems
 
 

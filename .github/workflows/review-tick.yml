@@ -2,7 +2,7 @@ name: WhatsApp review tick
 
 on:
   schedule:
-    - cron: "30 * * * *"   # every hour on the hour, IST (UTC+5:30)
+    - cron: "30 18-23,0-3 * * *"   # hourly from 00:00 to 09:00 IST only (10 runs a day)
   workflow_dispatch:
 
 jobs:

@@ -153,5 +153,12 @@ class EndToEnd(unittest.TestCase):
         self.assertIn("missing", r.stdout + r.stderr)
 
 
+class NoGitHub(unittest.TestCase):
+    def test_github_links_are_blocked_in_post_and_first_comment(self):
+        self.assertTrue(ap.guard({"post": "Code: github.com/Anchit-AI-Hustle/x"}))
+        self.assertTrue(ap.guard({"post": "ok", "first_comment": "https://raw.githubusercontent.com/a/b"}))
+        self.assertEqual(ap.guard({"post": "Try it: parwah-hq.anchit-tandon.com", "first_comment": "https://anchit-tandon.com"}), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
