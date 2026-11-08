@@ -1,4 +1,4 @@
-"""LinkedIn auto-pilot: publishes today's approved post from posts.json.
+"""LinkedIn auto-pilot: publishes the next approved post from posts.json, one every 6 hours.
 
 Publish-only by design: it creates one post per day on the author's own profile
 through LinkedIn's official Posts API. It never likes, comments on other
@@ -8,7 +8,8 @@ Environment:
   LINKEDIN_ACCESS_TOKEN  member token with scopes: openid profile w_member_social
   LINKEDIN_VERSION       API version header, YYYYMM (default 202605)
   DRY_RUN                "true" prints what would be posted and changes nothing
-  POST_DATE              optional YYYY-MM-DD override (default: today in IST)
+  POST_AT                optional ISO time override (default: now in IST)
+  MIN_GAP_HOURS          minimum hours between posts (default 5)
 
 Usage:
   python post.py           publish the next post, if none has gone out today
@@ -60,10 +61,18 @@ def guard(post):
     return problems
 
 
-def pick(queue, posted, date_str):
-    """The next unposted day, or None if one already went out today or all are done."""
-    if any(v.get("date") == date_str for v in posted.values()):
-        return None
+MIN_GAP_HOURS = float(os.environ.get("MIN_GAP_HOURS", "5"))
+
+
+def pick(queue, posted, now):
+    """The next unposted post, or None if one went out less than MIN_GAP_HOURS ago or all are done.
+
+    The schedule runs every 6 hours; the 5-hour gap stops a delayed or repeated run
+    from posting twice in one slot."""
+    for v in posted.values():
+        at = v.get("at")
+        if at and (now - datetime.datetime.fromisoformat(at)).total_seconds() < MIN_GAP_HOURS * 3600:
+            return None
     for post in sorted(queue, key=lambda p: p["day"]):
         if str(post["day"]) not in posted:
             return post
@@ -101,7 +110,8 @@ def main():
     dry = os.environ.get("DRY_RUN", "").lower() == "true"
     token = os.environ.get("LINKEDIN_ACCESS_TOKEN", "").strip()
     version = os.environ.get("LINKEDIN_VERSION", "202605").strip()
-    date_str = os.environ.get("POST_DATE") or datetime.datetime.now(IST).date().isoformat()
+    now = datetime.datetime.fromisoformat(os.environ["POST_AT"]) if os.environ.get("POST_AT") else datetime.datetime.now(IST)
+    date_str = now.date().isoformat()
 
     if "--check" in sys.argv:
         if not token:
@@ -115,9 +125,9 @@ def main():
 
     queue = json.load(open(QUEUE, encoding="utf-8"))
     posted = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
-    post = pick(queue, posted, date_str)
+    post = pick(queue, posted, now)
     if post is None:
-        print(f"Nothing to post on {date_str}: one already went out today, or the series is finished.")
+        print(f"Nothing to post at {now.isoformat(timespec='minutes')}: the last post went out under {MIN_GAP_HOURS:g} hours ago, or the series is finished.")
         return 0
 
     problems = guard(post)
@@ -145,7 +155,7 @@ def main():
     }
     status, headers, _ = call("POST", "/rest/posts", token, version, body)
     urn = headers.get("x-restli-id") or headers.get("X-RestLi-Id") or ""
-    posted[str(post["day"])] = {"date": date_str, "title": post["title"], "urn": urn}
+    posted[str(post["day"])] = {"date": date_str, "at": now.isoformat(timespec="seconds"), "title": post["title"], "urn": urn}
     json.dump(posted, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     print(f"Published Day {post['day']} (HTTP {status}) {urn}")
     print("First comment to add by hand: " + post.get("first_comment", ""))
