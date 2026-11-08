@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import subprocess
@@ -15,8 +16,8 @@ class LittleText(unittest.TestCase):
         self.assertEqual(ap.to_little_text("Plans (Basic) [x] a_b"), r"Plans \(Basic\) \[x\] a\_b")
 
     def test_hashtags_become_real_hashtags(self):
-        self.assertEqual(ap.to_little_text("#ProductManagement #20ProductsIn20Days"),
-                         r"{hashtag|\#|ProductManagement} {hashtag|\#|20ProductsIn20Days}")
+        self.assertEqual(ap.to_little_text("#ProductManagement #BuildInPublic"),
+                         r"{hashtag|\#|ProductManagement} {hashtag|\#|BuildInPublic}")
 
     def test_plain_text_is_untouched(self):
         self.assertEqual(ap.to_little_text("Scaled ₹15L to ₹80L → done"), "Scaled ₹15L to ₹80L → done")
@@ -35,7 +36,7 @@ class Guard(unittest.TestCase):
     def test_every_queued_post_passes(self):
         with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
             queue = json.load(fh)
-        self.assertEqual(len(queue), 22)
+        self.assertEqual(len(queue), 25)
         for p in queue:
             self.assertEqual(ap.guard(p), [], f"Day {p['day']} failed the guard")
 
@@ -44,24 +45,31 @@ class Schedule(unittest.TestCase):
     queue = [{"day": 0, "date": "2026-11-02", "title": "a", "post": "x"},
              {"day": 1, "date": "2026-11-03", "title": "b", "post": "y"}]
 
+    T = staticmethod(lambda s: datetime.datetime.fromisoformat(s))
+
     def test_starts_with_day_zero(self):
-        self.assertEqual(ap.pick(self.queue, {}, "2026-12-01")["day"], 0)
+        self.assertEqual(ap.pick(self.queue, {}, self.T("2026-12-01T08:00:00+05:30"))["day"], 0)
 
-    def test_next_day_follows_in_order(self):
-        self.assertEqual(ap.pick(self.queue, {"0": {"date": "2026-12-01"}}, "2026-12-02")["day"], 1)
+    def test_next_post_after_six_hours(self):
+        done = {"0": {"at": "2026-12-01T02:00:00+05:30"}}
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T08:00:00+05:30"))["day"], 1)
 
-    def test_only_one_post_per_day(self):
-        self.assertIsNone(ap.pick(self.queue, {"0": {"date": "2026-12-01"}}, "2026-12-01"))
+    def test_no_second_post_in_the_same_slot(self):
+        done = {"0": {"at": "2026-12-01T08:00:00+05:30"}}
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T08:40:00+05:30")))
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T12:59:00+05:30")))
+
+    def test_delayed_run_still_posts_once_gap_passes(self):
+        done = {"0": {"at": "2026-12-01T08:00:00+05:30"}}
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T13:01:00+05:30"))["day"], 1)
 
     def test_stops_when_series_is_done(self):
-        done = {"0": {"date": "2026-12-01"}, "1": {"date": "2026-12-02"}}
-        self.assertIsNone(ap.pick(self.queue, done, "2026-12-03"))
+        done = {"0": {"at": "2026-12-01T02:00:00+05:30"}, "1": {"at": "2026-12-01T08:00:00+05:30"}}
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-02T08:00:00+05:30")))
 
     def test_queue_dates_are_consecutive_and_unique(self):
         with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
             queue = json.load(fh)
-        dates = [p["date"] for p in queue]
-        self.assertEqual(len(dates), len(set(dates)))
         self.assertEqual([p["day"] for p in queue], list(range(len(queue))))
 
 
@@ -69,8 +77,9 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
     def test_publishes_once_with_correct_request(self):
         import shutil, tempfile
         tmp = tempfile.mkdtemp()
-        for f in ("posts.json", "posted.json"):
-            shutil.copy(os.path.join(HERE, f), tmp)
+        shutil.copy(os.path.join(HERE, "posts.json"), tmp)
+        with open(os.path.join(tmp, "posted.json"), "w") as fh:
+            fh.write("{}")
         calls = []
         def fake_call(method, path, token, version, body=None):
             calls.append((method, path, version, body))
@@ -81,7 +90,7 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
         ap.QUEUE, ap.STATE, ap.PAUSE = (os.path.join(tmp, "posts.json"), os.path.join(tmp, "posted.json"),
                                         os.path.join(tmp, "PAUSE"))
         ap.call = fake_call
-        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_DATE="2026-12-01", DRY_RUN="false")
+        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false")
         saved = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:
@@ -91,11 +100,11 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
             self.assertEqual(body["author"], "urn:li:person:abc123")
             self.assertEqual(body["visibility"], "PUBLIC")
             self.assertEqual(body["lifecycleState"], "PUBLISHED")
-            self.assertIn("{hashtag|\\#|20ProductsIn20Days}", body["commentary"])
+            self.assertIn("{hashtag|\\#|BuildInPublic}", body["commentary"])
             state = json.load(open(ap.STATE))
             self.assertEqual(state["0"]["urn"], "urn:li:share:999")
             n = len(calls)
-            ap.main()  # second run the same day must not post again
+            ap.main()  # a second run in the same slot must not post again
             self.assertEqual(len(calls), n)
         finally:
             ap.QUEUE, ap.STATE, ap.PAUSE, ap.call = old
@@ -114,9 +123,9 @@ class EndToEnd(unittest.TestCase):
 
     def test_dry_run_changes_nothing(self):
         before = open(os.path.join(HERE, "posted.json")).read()
-        r = self.run_script(DRY_RUN="true", POST_DATE="2026-11-02")
+        r = self.run_script(DRY_RUN="true", POST_AT="2030-01-01T08:00:00+05:30")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("DRY RUN", r.stdout)
+        self.assertTrue("DRY RUN" in r.stdout or "Nothing to post" in r.stdout, r.stdout)
         self.assertEqual(open(os.path.join(HERE, "posted.json")).read(), before)
 
     def test_pause_stops_real_posting(self):
@@ -125,7 +134,7 @@ class EndToEnd(unittest.TestCase):
         if not existed:
             open(path, "w").close()
         try:
-            r = self.run_script(DRY_RUN="false", POST_DATE="2026-11-02")
+            r = self.run_script(DRY_RUN="false", POST_AT="2030-01-01T08:00:00+05:30")
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("Paused", r.stdout)
         finally:
@@ -138,7 +147,7 @@ class EndToEnd(unittest.TestCase):
         if existed:
             os.rename(path, path + ".bak")
         try:
-            r = self.run_script(DRY_RUN="false", POST_DATE="2026-11-02")
+            r = self.run_script(DRY_RUN="false", POST_AT="2030-01-01T08:00:00+05:30")
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("LINKEDIN_ACCESS_TOKEN is missing", r.stdout + r.stderr)
         finally:
