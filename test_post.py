@@ -95,14 +95,21 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
         os.environ.update(env)
         try:
             self.assertEqual(ap.main(), 0)
-            method, path, version, body = calls[-1]
+            posts_calls = [c for c in calls if c[1] == "/rest/posts"]
+            self.assertEqual(len(posts_calls), 1)
+            method, path, version, body = posts_calls[0]
             self.assertEqual((method, path, version), ("POST", "/rest/posts", "202605"))
+            cm = calls[-1]  # the first comment follows the post, on the new post's URN
+            self.assertEqual(cm[1], "/rest/socialActions/urn%3Ali%3Ashare%3A999/comments")
+            self.assertEqual(cm[3]["actor"], "urn:li:person:abc123")
+            self.assertTrue(cm[3]["message"]["text"].strip())
             self.assertEqual(body["author"], "urn:li:person:abc123")
             self.assertEqual(body["visibility"], "PUBLIC")
             self.assertEqual(body["lifecycleState"], "PUBLISHED")
             self.assertIn("{hashtag|\\#|BuildInPublic}", body["commentary"])
             state = json.load(open(ap.STATE))
             self.assertEqual(state["0"]["urn"], "urn:li:share:999")
+            self.assertTrue(state["0"].get("commented"))
             n = len(calls)
             ap.main()  # a second run in the same slot must not post again
             self.assertEqual(len(calls), n)
@@ -168,6 +175,27 @@ class NoGitHub(unittest.TestCase):
         self.assertTrue(ap.guard({"post": "ok", "first_comment": "https://raw.githubusercontent.com/a/b"}))
         self.assertEqual(ap.guard({"post": "Try it: parwah-hq.anchit-tandon.com", "first_comment": "https://anchit-tandon.com"}), [])
 
+
+
+class FirstComment(unittest.TestCase):
+    def test_request_shape_matches_comments_api(self):
+        path, body = ap.comment_request("urn:li:share:7525391747045339136", "urn:li:person:abc", "Tried it?")
+        self.assertEqual(path, "/rest/socialActions/urn%3Ali%3Ashare%3A7525391747045339136/comments")
+        self.assertEqual(body, {"actor": "urn:li:person:abc", "object": "urn:li:share:7525391747045339136",
+                                "message": {"text": "Tried it?"}})
+
+    def test_failed_comment_never_breaks_the_post(self):
+        original = ap.call
+        def boom(*a, **k): raise SystemExit("LinkedIn API error 403: no")
+        ap.call = boom
+        try:
+            self.assertFalse(ap.add_first_comment("t", "202510", "urn:li:share:1", "urn:li:person:a", "hi"))
+        finally:
+            ap.call = original
+
+    def test_no_comment_without_urn_or_text(self):
+        self.assertFalse(ap.add_first_comment("t", "v", "", "a", "hi"))
+        self.assertFalse(ap.add_first_comment("t", "v", "urn:li:share:1", "a", "  "))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
