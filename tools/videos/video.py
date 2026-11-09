@@ -124,8 +124,13 @@ async def capture(browser, url, spec, actions, frames_dir, want_caps):
             try: caps.append((t, await pg.evaluate(CAP_JS)))
             except Exception: pass
         if "click" in a:
-            try: await pg.get_by_text(a["click"], exact=True).first.click(timeout=3000)
-            except Exception: pass
+            clicked = False
+            for loc in (pg.get_by_role("button", name=a["click"]), pg.get_by_role("link", name=a["click"]), pg.get_by_text(a["click"], exact=False)):
+                try:
+                    if await loc.count():
+                        await loc.first.click(timeout=3000); clicked = True; break
+                except Exception: pass
+            if not clicked: print(f"  click not found: {a['click']} ({spec['w']}px)", flush=True)
             k = round(a.get("hold", 3) * FPS); live = min(k, round(0.8 * FPS))
             for _ in range(live): await shot()                      # capture the transition frame by frame
             t += live / FPS; await hold((k - live) / FPS)
@@ -145,7 +150,7 @@ async def capture(browser, url, spec, actions, frames_dir, want_caps):
             await hold(a.get("hold", 1))
     await ctx.close()
     return n, caps
-def wrap(s, width=34):
+def wrap(s, width=26):
     s = re.sub(r"\s+", " ", s).strip(); lines = textwrap.wrap(s, width)
     if len(lines) > 2: lines = lines[:2]; lines[1] = lines[1].rstrip(" ,.;:") + "\u2026"
     return "\n".join(lines)
@@ -168,9 +173,10 @@ def compose(day, cfg, work, nframes, caps, out):
     for i, (a, txt) in enumerate(track):
         b = track[i + 1][0] if i + 1 < len(track) else D
         if b - a < 1.0: continue
-        p = tf(work, f"cap{i}", txt)
-        capf.append(f"drawtext=fontfile={BOLD}:textfile={p}:fontcolor=white:fontsize=42:line_spacing=8:shadowcolor=black@0.45:shadowy=3:"
-                    f"x=60:y='962+16*(1-min(1,(t-{a:.2f})/0.4))':enable='between(t,{a:.2f},{b:.2f})':alpha='min(1,(t-{a:.2f})/0.4)*min(1,({b:.2f}-t)/0.3)'")
+        for j, line in enumerate(txt.split("\n")):
+            p = tf(work, f"cap{i}_{j}", line)
+            capf.append(f"drawtext=fontfile={BOLD}:textfile={p}:fontcolor=white:fontsize=42:shadowcolor=black@0.45:shadowy=3:"
+                        f"x=60:y='{962 + j * 56}+16*(1-min(1,(t-{a:.2f})/0.4))':enable='between(t,{a:.2f},{b:.2f})':alpha='min(1,(t-{a:.2f})/0.4)*min(1,({b:.2f}-t)/0.3)'")
         if i: ticks.append(t_demo + a)
     nsize = 104 if len(cfg["name"]) <= 12 else (80 if len(cfg["name"]) <= 18 else 62)
     move = "crop=1080:1350:x='110+100*sin(t/5)':y='135+120*cos(t/6.5)'"
@@ -189,7 +195,7 @@ def compose(day, cfg, work, nframes, caps, out):
           f"drawtext=fontfile={BOLD}:textfile={f['label']}:fontcolor={ACC}:fontsize=36:x='90-50*(1-min(1,t/0.6))':y=470:alpha='min(1,t/0.5)',"
           f"drawbox=x=90:y=524:w='max(1,min(170,170*(t-0.2)/0.7))':h=8:color={ACC}:t=fill,"
           f"drawtext=fontfile={BOLD}:textfile={f['name']}:fontcolor=white:fontsize={nsize}:shadowcolor=black@0.4:shadowy=4:x=90:y='566+36*(1-min(1,max(0,(t-0.25)/0.6)))':alpha='min(1,max(0,(t-0.25)/0.6))',"
-          f"drawtext=fontfile={REG}:textfile={f['hook']}:fontcolor=0xD1D5DB:fontsize=42:line_spacing=10:x=90:y={566+nsize+44}:alpha='min(1,max(0,(t-0.8)/0.6))'[intro];")
+          + "".join(f"drawtext=fontfile={REG}:textfile={tf(work, f'hook{j}', ln)}:fontcolor=0xD1D5DB:fontsize=42:x=90:y={566+nsize+44+j*58}:alpha='min(1,max(0,(t-0.8-0.15*{j})/0.6))'," for j, ln in enumerate(textwrap.wrap(cfg["hook"], 34)[:2])).rstrip(",") + "[intro];")
     if has:
         fc += (f"[7:v]scale=980:613:flags=lanczos,format=rgba[ds];[10:v]format=gray[dm];[ds][dm]alphamerge[dsr];"
                f"[8:v]scale=300:649:flags=lanczos,format=rgba[ps];[12:v]format=gray[pm];[ps][pm]alphamerge[psr];"
@@ -203,9 +209,10 @@ def compose(day, cfg, work, nframes, caps, out):
                f"drawtext=fontfile={REG}:textfile={f['sub']}:fontcolor=0x94A3B8:fontsize=22:x=60:y=1262,"
                f"drawbox=x=60:y=1318:w=960:h=4:color=white@0.12:t=fill,drawbox=x=60:y=1318:w='max(1,960*t/{D:.3f})':h=4:color={ACC}:t=fill,trim=duration={D:.3f}[demo];")
     else:
-        p = tf(work, "mid", wrap(cfg["caption"], 26))
-        fc += (f"[1:v]{move}[bd];[bd][g2]overlay=x=90:y=200:shortest=1,"
-               f"drawtext=fontfile={BOLD}:textfile={p}:fontcolor=white:fontsize=58:line_spacing=14:x=(w-tw)/2:y=(h-th)/2:alpha='min(1,t/0.6)'[demo];")
+        mids = wrap(cfg["caption"], 22).split("\n")
+        fc += (f"[1:v]{move}[bd];[bd][g2]overlay=x=90:y=200:shortest=1," + ",".join(
+               f"drawtext=fontfile={BOLD}:textfile={tf(work, f'mid{j}', ln)}:fontcolor=white:fontsize=58:x=(w-tw)/2:y={640 + (j - (len(mids) - 1) / 2) * 76:.0f}:alpha='min(1,t/0.6)'"
+               for j, ln in enumerate(mids)) + "[demo];")
     fc += (f"[2:v]{move}[bo];[bo][g3]overlay=x=90:y=120:shortest=1,"
            f"drawtext=fontfile={BOLD}:textfile={f['cta']}:fontcolor={ACC}:fontsize=50:x=(w-tw)/2:y='520+20*(1-min(1,t/0.5))':alpha='min(1,t/0.5)',"
            f"drawtext=fontfile={BOLD}:textfile={f['url']}:fontcolor=white:fontsize={48 if len(cfg['url_text']) <= 30 else 36}:x=(w-tw)/2:y=610:alpha='min(1,max(0,(t-0.2)/0.5))',"
