@@ -1,0 +1,238 @@
+{
+ "0": {
+  "label": "THE SERIES",
+  "name": "23 Products",
+  "hook": "Real, working products one every 6 hours",
+  "caption": "From family care to disaster prediction",
+  "url_text": "anchit-tandon.com",
+  "site": "https://anchit-tandon.com"
+ },
+ "1": {
+  "label": "PROJECT 1/23",
+  "name": "LifeCycle-OS",
+  "hook": "A full lifecycle marketing plan for any brand, in seconds",
+  "caption": "Built only on the brand's real data",
+  "url_text": "lifecycle-os.anchit-tandon.com",
+  "site": "https://lifecycle-os.anchit-tandon.com"
+ },
+ "2": {
+  "label": "PROJECT 2/23",
+  "name": "The Third Eye",
+  "hook": "My take on JARVIS for everyday work",
+  "caption": "Listens, sees, plans and acts",
+  "url_text": "the-third-eye.anchit-tandon.com",
+  "site": "https://the-third-eye.anchit-tandon.com"
+ },
+ "3": {
+  "label": "PROJECT 3/23",
+  "name": "Parwah",
+  "hook": "Where your family keeps what matters",
+  "caption": "Every need: open, claimed, done",
+  "url_text": "parwah-hq.anchit-tandon.com",
+  "site": "https://parwah-hq.anchit-tandon.com",
+  "actions": [
+   {
+    "hold": 1.5
+   },
+   {
+    "click": "See it first",
+    "hold": 3.2
+   },
+   {
+    "click": "View family",
+    "hold": 3.2
+   },
+   {
+    "click": "Next",
+    "hold": 3.2
+   },
+   {
+    "click": "Next",
+    "hold": 3.2
+   },
+   {
+    "click": "Next",
+    "hold": 3.2
+   },
+   {
+    "click": "Next",
+    "hold": 3.2
+   }
+  ],
+  "captions": [
+   "Where your family keeps what matters",
+   "When your family needs to know",
+   "Everything about one person, in one place",
+   "A readiness score shows what is missing",
+   "Ask Ekta about your family",
+   "Shared to-dos and an emergency card",
+   "Free for families"
+  ]
+ },
+ "4": {
+  "label": "PROJECT 4/23",
+  "name": "LoosenUp",
+  "hook": "Built for your worst 2 minutes, not your best 20",
+  "caption": "No sign-up. SOS on every screen.",
+  "url_text": "loosenup.anchit-tandon.com",
+  "site": "https://loosenup.anchit-tandon.com"
+ },
+ "5": {
+  "label": "PROJECT 5/23",
+  "name": "Predict Natural Disasters",
+  "hook": "A live global hazard map from 8 official sources",
+  "caption": "It grades its own forecasts",
+  "url_text": "predict-natural-disasters.anchit-tandon.com",
+  "site": "https://predict-natural-disasters.anchit-tandon.com"
+ },
+ "6": {
+  "label": "PROJECT 6/23",
+  "name": "Edu AI",
+  "hook": "One learning plan from birth to Class 12",
+  "caption": "Aligned to NCERT and the NCF",
+  "url_text": "edu-ai.anchit-tandon.com",
+  "site": "https://edu-ai.anchit-tandon.com"
+ },
+ "7": {
+  "label": "PROJECT 7/23",
+  "name": "AI TeleSuite",
+  "hook": "AI that listens to every sales call so managers can coach",
+  "caption": "Assisted Sales: Rs 15L to Rs 80L a month",
+  "url_text": "ai-tele-suite.anchit-tandon.com",
+  "site": "https://ai-tele-suite.anchit-tandon.com"
+ },
+ "8": {
+  "label": "PROJECT 8/23",
+  "name": "Hey Yaara",
+  "hook": "A Hinglish AI companion you can call like a friend",
+  "caption": "The call never goes quiet",
+  "url_text": "hey-yaara.anchit-tandon.com",
+  "site": "https://hey-yaara.anchit-tandon.com"
+ },
+ "9": {
+  "label": "PROJECT 9/23",
+  "name": "Animind",
+  "hook": "What your pet's sound actually reveals",
+  "caption": "Arousal, valence and an honest confidence",
+  "url_text": "pet-mind.anchit-tandon.com",
+  "site": "https://pet-mind.anchit-tandon.com"
+ },
+ "10": {
+  "label": "PROJECT 10/23",
+  "name": "TH+ LifeEngine",
+  "hook": "Yoga and food plans you can actually track",
+  "caption": "Daily checklists, not a wall of text",
+  "url_text": "th-life-engine.anchit-tandon.com",
+  "site": "https://th-life-engine.anchit-tandon.com"
+ },
+ "11": {
+  "label": "PROJECT 11/23",
+  "name": "Markets Pro",
+  "hook": "A backtest that loses money on purpose",
+  "caption": "Real costs, real rules, no cheating",
+  "url_text": "markets-pro.anchit-tandon.com",
+  "site": "https://markets-pro.anchit-tandon.com"
+ },
+ "12": {
+  "label": "PROJECT 12/23",
+  "name": "MuseVibe Studio",
+  "hook": "Turn a one-line idea into a full song",
+  "caption": "Genre, tempo, mood, vocals, lyrics",
+  "url_text": "music-gen-ai.anchit-tandon.com",
+  "site": "https://music-gen-ai.anchit-tandon.com"
+ },
+ "13": {
+  "label": "PROJECT 13/23",
+  "name": "Kolab",
+  "hook": "Brands pay on results from verified creators",
+  "caption": "Storefronts, deals and payouts",
+  "url_text": "kolab.anchit-tandon.com",
+  "site": "https://kolab.anchit-tandon.com"
+ },
+ "14": {
+  "label": "PROJECT 14/23",
+  "name": "Shoutout",
+  "hook": "Gigs, collabs and auditions in one place",
+  "caption": "Every request is a Shout",
+  "url_text": "shoutout.anchit-tandon.com",
+  "site": "https://shoutout.anchit-tandon.com"
+ },
+ "15": {
+  "label": "PROJECT 15/23",
+  "name": "ANCHOR",
+  "hook": "An AI techno artist releasing every day",
+  "caption": "139 videos, Rs 0 spent",
+  "url_text": "anchor.anchit-tandon.com",
+  "site": "https://anchor.anchit-tandon.com"
+ },
+ "16": {
+  "label": "PROJECT 16/23",
+  "name": "JobHunt",
+  "hook": "Real job openings, tailored resumes",
+  "caption": "Never invents experience",
+  "url_text": "anchit-tandon.com/jobhunt",
+  "site": "https://anchit-tandon.com/jobhunt"
+ },
+ "17": {
+  "label": "PROJECT 17/23",
+  "name": "Book Publishing Engine",
+  "hook": "4 thrillers and 3 kids' books now on Amazon",
+  "caption": "Thrillers and kids' drawing books",
+  "url_text": "amazon.in/Anchit-Tandon"
+ },
+ "18": {
+  "label": "PROJECT 18/23",
+  "name": "The Passion Table",
+  "hook": "Home-style food from neighbourhood kitchens",
+  "caption": "Subscribe, order or reserve",
+  "url_text": "the-passion-table.anchit-tandon.com",
+  "site": "https://the-passion-table.anchit-tandon.com"
+ },
+ "19": {
+  "label": "PROJECT 19/23",
+  "name": "Airpane",
+  "hook": "Any website, floating in your room no headset",
+  "caption": "Pinch, swing, throw it to your TV",
+  "url_text": "airpane.anchit-tandon.com",
+  "site": "https://airpane.anchit-tandon.com"
+ },
+ "20": {
+  "label": "PROJECT 20/23",
+  "name": "Games",
+  "hook": "12 browser games drawn entirely in code",
+  "caption": "No download, no sign-in",
+  "url_text": "anchit-tandon.com/games",
+  "site": "https://anchit-tandon.com/games"
+ },
+ "21": {
+  "label": "PROJECT 21/23",
+  "name": "Films",
+  "hook": "A 25-minute film made entirely in code",
+  "caption": "A Boat Made of Paper",
+  "url_text": "anchit-tandon.com/movies",
+  "site": "https://anchit-tandon.com/movies"
+ },
+ "22": {
+  "label": "PROJECT 22/23",
+  "name": "Prompter Cam",
+  "hook": "A teleprompter and camera in one browser tab",
+  "caption": "Read, look at the lens, record",
+  "url_text": "anchit-tandon.com/teleprompter",
+  "site": "https://anchit-tandon.com/teleprompter"
+ },
+ "23": {
+  "label": "PROJECT 23/23",
+  "name": "Anchit LLM",
+  "hook": "Don't just read my work. Question it.",
+  "caption": "Answers in my own voice",
+  "url_text": "anchit-tandon.com",
+  "site": "https://anchit-tandon.com"
+ },
+ "24": {
+  "label": "THE FINALE",
+  "name": "The Workflow",
+  "hook": "How these 23 posts were published",
+  "caption": "Automation that keeps your voice",
+  "url_text": "anchit-tandon.com"
+ }
+}
