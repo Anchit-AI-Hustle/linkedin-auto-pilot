@@ -32,41 +32,35 @@
   "site": "https://parwah-hq.anchit-tandon.com",
   "actions": [
    {
-    "hold": 1.5
-   },
-   {
     "click": "See it first",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "When your family needs to know"
    },
    {
     "click": "View family",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "Everything about one person, in one place"
    },
    {
     "click": "Next",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "A readiness score shows what is missing"
    },
    {
     "click": "Next",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "Ask Ekta about your family"
    },
    {
     "click": "Next",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "Shared to-dos and an emergency card"
    },
    {
     "click": "Next",
-    "hold": 3.2
+    "hold": 3.2,
+    "label": "Free for families"
    }
-  ],
-  "captions": [
-   "Where your family keeps what matters",
-   "When your family needs to know",
-   "Everything about one person, in one place",
-   "A readiness score shows what is missing",
-   "Ask Ekta about your family",
-   "Shared to-dos and an emergency card",
-   "Free for families"
   ]
  },
  "4": {
