@@ -1,8 +1,10 @@
-name: Daily LinkedIn post
+name: LinkedIn post every 6 hours
 
-# Posting now happens only after approval on WhatsApp (see review-tick.yml).
-# This workflow is kept for manual dry runs only.
+# Posts the next approved post at 2 AM, 8 AM, 2 PM and 8 PM IST
+# (20:30, 02:30, 08:30 and 14:30 UTC). Can also be run by hand.
 on:
+  schedule:
+    - cron: "30 2,8,14,20 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
