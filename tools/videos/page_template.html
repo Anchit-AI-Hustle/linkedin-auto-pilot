@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>23 products, one every 6 hours: how I built and shipped the series | Anchit Tandon</title>
+<meta name="description" content="Every LinkedIn post, HD demo video and the workflow behind Anchit Tandon's series: 23 working products, one every 6 hours.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F3F2EF;--surface:#FFFFFF;--ink:#191919;--muted:#5E5E5E;--rule:#DCDAD5;--action:#0A66C2;--marker:#F6C744;
+--display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--text:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1419;--surface:#1B1F23;--ink:#E8E6E3;--muted:#A3A09B;--rule:#2F343A;--action:#70B5F9;--marker:#E2B53C;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1419;--surface:#1B1F23;--ink:#E8E6E3;--muted:#A3A09B;--rule:#2F343A;--action:#70B5F9;--marker:#E2B53C;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--text);font-size:16px;line-height:1.5}
+.wrap{max-width:600px;margin:0 auto;padding:32px 14px 80px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,7vw,2.8rem);line-height:1.04;letter-spacing:-.02em;margin:0 0 10px}
+.lede{color:var(--muted);margin:0 0 18px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--rule);margin-bottom:18px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.days{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:thin;padding-bottom:2px}
+.days a{flex:none;min-width:40px;min-height:40px;display:grid;place-items:center;border-radius:999px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);text-decoration:none;font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.days a:focus-visible,button:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+.toggle{font:inherit;font-weight:700;font-size:.85rem;border:1px solid var(--action);color:var(--action);background:transparent;border-radius:999px;padding:8px 12px;cursor:pointer;min-height:40px;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin-bottom:12px}
+.head{display:flex;gap:10px;align-items:flex-start;padding:12px 16px 4px}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--action);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;flex:none}
+.name{font-weight:700;line-height:1.25}.sub{color:var(--muted);font-size:.8rem;line-height:1.3}
+.day{margin-left:auto;font-size:.78rem;font-weight:700;color:var(--muted);text-align:right;line-height:1.35}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:3px}
+.badge.live{background:#057642;color:#fff}.badge.sched{border:1px solid var(--rule);color:var(--ink)}
+.badge a{color:inherit}
+.body{padding:8px 16px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem}
+.body a{color:var(--action);font-weight:700;text-decoration:none}
+.body .tag{color:var(--action);font-weight:700}
+.more{font:inherit;font-size:.9rem;background:none;border:0;color:var(--muted);padding:4px 16px 10px;cursor:pointer;min-height:36px}
+.meta{display:flex;justify-content:space-between;gap:10px;padding:8px 16px;border-top:1px solid var(--rule);color:var(--muted);font-size:.8rem}
+.comment{display:flex;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--rule)}
+.comment .avatar{width:32px;height:32px;font-size:.75rem}
+.bubble{background:var(--bg);border-radius:0 10px 10px 10px;padding:8px 10px;font-size:.88rem;overflow-wrap:anywhere;flex:1}
+.bubble b{display:block;font-size:.8rem}
+.bubble a{color:var(--action)}
+footer{color:var(--muted);font-size:.85rem;margin-top:24px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.ad{margin:12px 0 4px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:#000}
+.ad video{display:block;width:100%;max-width:420px;margin:0 auto;aspect-ratio:4/5;background:#000}
+.adcap{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:space-between;padding:8px 12px;font-size:.78rem;color:var(--muted);background:var(--card,transparent)}
+.adfile{font-family:ui-monospace,monospace}
+.how{margin:18px 0 26px;padding:18px 20px;border:1px solid var(--rule);border-radius:12px}.how h2{margin:0 0 10px;font-size:1.15rem}.how ol{margin:0;padding-left:1.2em;display:grid;gap:8px;line-height:1.5}.how a{font-weight:700}
+.ad video{max-width:540px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>23 products, one every 6 hours</h1>
+<p class="lede">Every post in my LinkedIn series, with an HD demo of each live product on desktop and mobile. Below is the workflow behind it.</p>
+<section class="how" aria-label="How this was built"><h2>How it was built</h2><ol><li><b>One queue.</b> All posts live in one file, written to a fixed case-study format and checked by tests before anything goes out.</li><li><b>A content guard.</b> Every post is checked before publishing: no unfinished placeholders, broken formatting or posts over LinkedIn's limit.</li><li><b>Real demos, not mock-ups.</b> Each video captures the live product frame by frame on desktop and mobile, with captions taken from the product itself and original music.</li><li><b>Every 6 hours.</b> A scheduled workflow publishes the next post through LinkedIn's official API, and never posts twice in one slot.</li><li><b>Built with Claude.</b> Writing, fact-checking against each product, the videos and the workflow were built with Claude, Anthropic's AI.</li></ol><p><a href="https://anchit-tandon.com">See all my live products →</a></p></section>
+<div class="bar"><nav class="days" id="days" aria-label="Jump to a day"></nav><button class="toggle" id="all" type="button" aria-pressed="false">Expand all</button></div>
+<main id="feed"></main>
+<footer>Source: posts.json in Anchit-AI-Hustle/linkedin-auto-pilot. Day 0 goes out when you press Start posting, then one a day at 9:00 AM IST.</footer>
+</div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+  var P=JSON.parse(document.getElementById('data').textContent);
+  function el(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;}
+  var LINK=/(https?:\/\/[^\s|)]+|(?:[a-z0-9-]+\.)+(?:com|in)(?:\/[^\s|)]*)?|#[A-Za-z0-9]+)/g;
+  function render(node,text){
+    node.textContent=''; var last=0; text.replace(LINK,function(m,_,i){
+      node.appendChild(document.createTextNode(text.slice(last,i)));
+      if(m.charAt(0)==='#'){node.appendChild(el('span','tag',m));}
+      else{var a=el('a',null,m);a.href=m.indexOf('http')===0?m:'https://'+m;a.target='_blank';a.rel='noopener';node.appendChild(a);}
+      last=i+m.length; return m;});
+    node.appendChild(document.createTextNode(text.slice(last)));
+  }
+  var feed=document.getElementById('feed'), days=document.getElementById('days'), cards=[];
+  P.forEach(function(p){
+    var a=el('a',null,String(p.day)); a.href='#day-'+p.day; a.setAttribute('aria-label','Day '+p.day+': '+p.title); days.appendChild(a);
+    var c=el('article','card'); c.id='day-'+p.day;
+    var h=el('div','head'); h.appendChild(el('div','avatar','AT'));
+    var who=el('div'); who.appendChild(el('div','name','Anchit Tandon')); who.appendChild(el('div','sub','Product Lead & AI Builder | Ex-Times Internet')); h.appendChild(who);
+    var dd=el('div','day'); dd.appendChild(el('div',null,'Day '+p.day)); dd.appendChild(el('div',null,p.when||'')); var bg=el('span','badge '+(p.status==='Live'?'live':'sched')); if(p.live){var la=el('a',null,'Live on LinkedIn ↗'); la.href=p.live; la.target='_blank'; la.rel='noopener'; bg.appendChild(la);} else bg.textContent=p.status||''; dd.appendChild(bg); h.appendChild(dd); c.appendChild(h);
+    var lines=p.post.split('\n'), short=lines.slice(0,2).join('\n');
+    var body=el('div','body'); render(body,short); c.appendChild(body);
+    var more=el('button','more','…see more'); more.type='button'; more.setAttribute('aria-expanded','false');
+    function set(open){render(body,open?p.post:short); more.textContent=open?'show less':'…see more'; more.setAttribute('aria-expanded',String(open));}
+    more.addEventListener('click',function(){set(more.getAttribute('aria-expanded')!=='true');});
+    c.appendChild(more);
+    if(p.ad){var vw=el('div','ad'); var v=document.createElement('video'); v.src=p.ad; v.controls=true; v.muted=true; v.loop=true; v.playsInline=true; v.preload='none'; v.poster=p.poster||''; v.setAttribute('aria-label','Video ad for '+p.title); vw.appendChild(v); var ac=el('div','adcap'); ac.appendChild(el('span',null,'\ud83c\udfac HD demo: the live product on desktop and mobile, with music')); if(p.adname){var dl=el('span','adfile',p.adname); ac.appendChild(dl);} vw.appendChild(ac); c.appendChild(vw);}
+    var m=el('div','meta'); m.appendChild(el('span',null,p.title)); m.appendChild(el('span',null,p.post.length.toLocaleString('en-IN')+' of 3,000 characters')); c.appendChild(m);
+    var cm=el('div','comment'); cm.appendChild(el('div','avatar','AT')); var b=el('div','bubble'); b.appendChild(el('b',null,'Anchit Tandon (first comment)')); var t=el('span'); render(t,p.first_comment); b.appendChild(t); cm.appendChild(b); c.appendChild(cm);
+    feed.appendChild(c); cards.push(set);
+  });
+  var all=document.getElementById('all');
+  all.addEventListener('click',function(){var on=all.getAttribute('aria-pressed')!=='true'; all.setAttribute('aria-pressed',String(on)); all.textContent=on?'Collapse all':'Expand all'; cards.forEach(function(s){s(on);});});
+})();
+</script>
+</body>
+</html>
