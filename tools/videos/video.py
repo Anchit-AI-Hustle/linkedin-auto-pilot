@@ -10,49 +10,61 @@ from PIL import Image, ImageDraw, ImageFilter
 from playwright.async_api import async_playwright
 ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build")
 os.makedirs(ASSET_DIR, exist_ok=True)
-FONTS = {"Poppins-Bold.ttf": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Bold.ttf",
-         "Poppins-Regular.ttf": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf",
-         "Poppins-Medium.ttf": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Medium.ttf"}
+FONT_NAMES = ("Poppins-Bold.ttf", "Poppins-Regular.ttf", "Poppins-Medium.ttf")
+FONT_SOURCES = ("https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/poppins/{}",          # CDN first: GitHub raw rate-limits CI runners
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/{}",
+                "https://github.com/google/fonts/raw/main/ofl/poppins/{}")
+FALLBACK = ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 def fonts():
-    for n, u in FONTS.items():
+    """Poppins from the first source that answers (with retries); never fail a render over a font."""
+    import time as _t
+    for n in FONT_NAMES:
         p = os.path.join(ASSET_DIR, n)
-        if not os.path.exists(p):
+        if os.path.exists(p) and os.path.getsize(p) > 10000: continue
+        got = False
+        for attempt in range(3):
+            for src in FONT_SOURCES:
+                try:
+                    req = urllib.request.Request(src.format(n), headers={"User-Agent": "linkedin-auto-pilot-video"})
+                    data = urllib.request.urlopen(req, timeout=30).read()
+                    if len(data) > 10000 and data[:4] in (b"\x00\x01\x00\x00", b"OTTO", b"true"):
+                        open(p, "wb").write(data); got = True; break
+                except Exception as err:
+                    print(f"  font {n} from {src.split('/')[2]}: {err}", flush=True)
+            if got: break
+            _t.sleep(5 * (attempt + 1))
+        if not got:
             local = "/usr/share/fonts/truetype/google-fonts/" + n
-            try:
-                urllib.request.urlretrieve(u, p)
-            except Exception:
-                if os.path.exists(local):
-                    import shutil; shutil.copy(local, p)
-                else: raise
+            fb = local if os.path.exists(local) else next((f for f in FALLBACK if os.path.exists(f) and ("Bold" in f) == ("Bold" in n)), None)
+            if not fb: raise SystemExit(f"No font available for {n}")
+            shutil.copy(fb, p); print(f"  font {n}: using {os.path.basename(fb)} instead", flush=True)
 def png(name, img): img.save(os.path.join(ASSET_DIR, name))
 def visuals():
-    W, H = 1300, 1620
-    y, x = np.mgrid[0:H, 0:W]
-    r = 8 + 46 * (1 - y / H) * x / W; g = 10 + 14 * (1 - y / H) * (1 - x / W); b = 22 + 80 * (1 - y / H) * (1 - x / W) + 20 * (y / H)
+    BW, BH = q(1300), q(1620)
+    y, x = np.mgrid[0:BH, 0:BW]
+    r = 8 + 46 * (1 - y / BH) * x / BW; g = 10 + 14 * (1 - y / BH) * (1 - x / BW); b = 22 + 80 * (1 - y / BH) * (1 - x / BW) + 20 * (y / BH)
     png("bg_big.png", Image.fromarray(np.dstack([r, g, b]).clip(0, 255).astype("uint8")))
-    glow = Image.new("RGBA", (900, 900), (0, 0, 0, 0)); ImageDraw.Draw(glow).ellipse([150, 150, 750, 750], fill=(139, 92, 246, 110))
-    png("glow.png", glow.filter(ImageFilter.GaussianBlur(120)))
-    # desktop browser window: 980x613 content area under a 44px title bar
-    DW, DH, TB = 980, 613, 44
-    win = Image.new("RGBA", (DW + 4, DH + TB + 4), (0, 0, 0, 0)); d = ImageDraw.Draw(win)
-    d.rounded_rectangle([0, 0, DW + 3, DH + TB + 3], 18, fill=(30, 33, 44, 255), outline=(78, 82, 100, 255), width=2)
+    glow = Image.new("RGBA", (q(900), q(900)), (0, 0, 0, 0)); ImageDraw.Draw(glow).ellipse([q(150), q(150), q(750), q(750)], fill=(139, 92, 246, 110))
+    png("glow.png", glow.filter(ImageFilter.GaussianBlur(q(120))))
+    DW, DH, TB = q(980), q(613), q(44)
+    win = Image.new("RGBA", (DW + q(4), DH + TB + q(4)), (0, 0, 0, 0)); d = ImageDraw.Draw(win)
+    d.rounded_rectangle([0, 0, DW + q(3), DH + TB + q(3)], q(18), fill=(30, 33, 44, 255), outline=(78, 82, 100, 255), width=max(2, q(2)))
     for i, c in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
-        d.ellipse([18 + i * 22, 15, 32 + i * 22, 29], fill=c + (255,))
-    d.rounded_rectangle([110, 10, DW - 60, 34], 10, fill=(18, 20, 28, 255))
+        d.ellipse([q(18 + i * 22), q(15), q(32 + i * 22), q(29)], fill=c + (255,))
+    d.rounded_rectangle([q(110), q(10), DW - q(60), q(34)], q(10), fill=(18, 20, 28, 255))
     png("browser.png", win)
-    m = Image.new("L", (DW, DH), 0); ImageDraw.Draw(m).rounded_rectangle([0, 0, DW - 1, DH - 1 + 20], 14, fill=255); png("mask_desk.png", m)
-    sh = Image.new("RGBA", (DW + 120, DH + TB + 120), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle([60, 70, DW + 60, DH + TB + 60], 24, fill=(0, 0, 0, 160))
-    png("shadow_desk.png", sh.filter(ImageFilter.GaussianBlur(26)))
-    # phone: 300x649 screen (390x844 ratio), bezel 12px
-    PW, PH, B, R = 300, 649, 12, 34
+    m = Image.new("L", (DW, DH), 0); ImageDraw.Draw(m).rounded_rectangle([0, 0, DW - 1, DH - 1 + q(20)], q(14), fill=255); png("mask_desk.png", m)
+    sh = Image.new("RGBA", (DW + q(120), DH + TB + q(120)), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle([q(60), q(70), DW + q(60), DH + TB + q(60)], q(24), fill=(0, 0, 0, 160))
+    png("shadow_desk.png", sh.filter(ImageFilter.GaussianBlur(q(26))))
+    PW, PH, Bz, R = q(300), q(649), q(12), q(34)
     m = Image.new("L", (PW, PH), 0); ImageDraw.Draw(m).rounded_rectangle([0, 0, PW - 1, PH - 1], R, fill=255); png("mask_phone.png", m)
-    bz = Image.new("RGBA", (PW + 2 * B, PH + 2 * B), (0, 0, 0, 0)); d = ImageDraw.Draw(bz)
-    d.rounded_rectangle([0, 0, PW + 2 * B - 1, PH + 2 * B - 1], R + B, fill=(20, 22, 30, 255), outline=(84, 88, 108, 255), width=3)
-    d.rounded_rectangle([B, B, B + PW - 1, B + PH - 1], R, fill=(0, 0, 0, 0))
-    d.rounded_rectangle([(PW + 2 * B) // 2 - 44, B + 8, (PW + 2 * B) // 2 + 44, B + 26], 9, fill=(8, 8, 12, 255))
+    bz = Image.new("RGBA", (PW + 2 * Bz, PH + 2 * Bz), (0, 0, 0, 0)); d = ImageDraw.Draw(bz)
+    d.rounded_rectangle([0, 0, PW + 2 * Bz - 1, PH + 2 * Bz - 1], R + Bz, fill=(20, 22, 30, 255), outline=(84, 88, 108, 255), width=max(3, q(3)))
+    d.rounded_rectangle([Bz, Bz, Bz + PW - 1, Bz + PH - 1], R, fill=(0, 0, 0, 0))
+    d.rounded_rectangle([(PW + 2 * Bz) // 2 - q(44), Bz + q(8), (PW + 2 * Bz) // 2 + q(44), Bz + q(26)], q(9), fill=(8, 8, 12, 255))
     png("phone.png", bz)
-    sh = Image.new("RGBA", (PW + 140, PH + 140), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle([60, 70, PW + 80, PH + 80], 50, fill=(0, 0, 0, 180))
-    png("shadow_phone.png", sh.filter(ImageFilter.GaussianBlur(24)))
+    sh = Image.new("RGBA", (PW + q(140), PH + q(140)), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle([q(60), q(70), PW + q(80), PH + q(80)], q(50), fill=(0, 0, 0, 180))
+    png("shadow_phone.png", sh.filter(ImageFilter.GaussianBlur(q(24))))
 def wav(name, sig, sr=44100):
     st = np.stack([sig, np.roll(sig, int(0.01 * sr))], 1)
     w = wave.open(os.path.join(ASSET_DIR, name), "wb"); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
@@ -84,8 +96,11 @@ def audio():
     tk = np.arange(int(sr * 0.12)) / sr; wav("tick.wav", 0.5 * np.sin(2 * np.pi * 1800 * tk) * np.exp(-tk / 0.02))
 
 HERE = os.path.dirname(os.path.abspath(__file__)); B = OUT_ASSETS = os.path.join(HERE, "build"); OUT = os.path.join(B, "out")
-FPS, W, H = 30, 1080, 1350
-DESK = dict(w=1440, h=900, dpr=1, mobile=False); PHONE = dict(w=390, h=844, dpr=2, mobile=True)
+FPS = 30
+S = float(os.environ.get("VIDEO_SCALE", "1.6"))          # 1.6 -> 1728x2160 master (2160p), downscaled copy for the web
+W, H = round(1080 * S), round(1350 * S)
+def q(n): return int(round(n * S))
+DESK = dict(w=1440, h=900, dpr=2, mobile=False); PHONE = dict(w=390, h=844, dpr=2, mobile=True)
 ACC = "0x8B5CF6"; BOLD = f"{B}/Poppins-Bold.ttf"; REG = f"{B}/Poppins-Regular.ttf"; MED = f"{B}/Poppins-Medium.ttf"
 BAD = {"SIGN IN", "PROFILE", "LIFEENGINE", "RELEASES", "RELEASED", "CHAPTERS", "MORE PAGES", "PERFORMANCE", "EQUITY & DRAWDOWN", "START HERE", "ANCHITTANDON", "PLAY MUSIC"}
 CAP_JS = """()=>{const vh=innerHeight;const hs=[...document.querySelectorAll('h1,h2,h3')].filter(e=>{const r=e.getBoundingClientRect();const t=(e.innerText||'').trim();return r.top>=30&&r.top<vh*0.7&&r.height>0&&t.length>5&&getComputedStyle(e).visibility!=='hidden';});return hs.length?hs[0].innerText.replace(/\\s+/g,' ').trim():'';}"""
@@ -176,11 +191,11 @@ def compose(day, cfg, work, nframes, caps, out):
         if b - a < 1.0: continue
         for j, line in enumerate(txt.split("\n")):
             p = tf(work, f"cap{i}_{j}", line)
-            capf.append(f"drawtext=fontfile={BOLD}:textfile={p}:fontcolor=white:fontsize=42:shadowcolor=black@0.45:shadowy=3:"
-                        f"x=60:y='{962 + j * 56}+16*(1-min(1,(t-{a:.2f})/0.4))':enable='between(t,{a:.2f},{b:.2f})':alpha='min(1,(t-{a:.2f})/0.4)*min(1,({b:.2f}-t)/0.3)'")
+            capf.append(f"drawtext=fontfile={BOLD}:textfile={p}:fontcolor=white:fontsize={q(42)}:shadowcolor=black@0.45:shadowy={q(3)}:"
+                        f"x={q(60)}:y='{q(962 + j * 56)}+{q(16)}*(1-min(1,(t-{a:.2f})/0.4))':enable='between(t,{a:.2f},{b:.2f})':alpha='min(1,(t-{a:.2f})/0.4)*min(1,({b:.2f}-t)/0.3)'")
         if i: ticks.append(t_demo + a)
-    nsize = 104 if len(cfg["name"]) <= 12 else (80 if len(cfg["name"]) <= 18 else 62)
-    move = "crop=1080:1350:x='110+100*sin(t/5)':y='135+120*cos(t/6.5)'"
+    nsize = q(104 if len(cfg["name"]) <= 12 else (80 if len(cfg["name"]) <= 18 else 62))
+    move = f"crop={W}:{H}:x='{q(110)}+{q(100)}*sin(t/5)':y='{q(135)}+{q(120)}*cos(t/6.5)'"
     has = nframes > 0
     inp = ["-loop", "1", "-framerate", str(FPS), "-t", f"{INTRO}", "-i", f"{B}/bg_big.png",          # 0 intro bg
            "-loop", "1", "-framerate", str(FPS), "-t", f"{D:.3f}", "-i", f"{B}/bg_big.png",         # 1 demo bg
@@ -192,32 +207,32 @@ def compose(day, cfg, work, nframes, caps, out):
                 "-i", f"{B}/browser.png", "-i", f"{B}/mask_desk.png", "-i", f"{B}/phone.png", "-i", f"{B}/mask_phone.png",       # 9 10 11 12
                 "-i", f"{B}/shadow_desk.png", "-i", f"{B}/shadow_phone.png"]                                                      # 13 14
     fc = (f"[3:v]split=3[g1][g2][g3];"
-          f"[0:v]{move}[bi];[bi][g1]overlay=x=-120:y=180:shortest=1,"
-          f"drawtext=fontfile={BOLD}:textfile={f['label']}:fontcolor={ACC}:fontsize=36:x='90-50*(1-min(1,t/0.6))':y=470:alpha='min(1,t/0.5)',"
-          f"drawbox=x=90:y=524:w='max(1,min(170,170*(t-0.2)/0.7))':h=8:color={ACC}:t=fill,"
-          f"drawtext=fontfile={BOLD}:textfile={f['name']}:fontcolor=white:fontsize={nsize}:shadowcolor=black@0.4:shadowy=4:x=90:y='566+36*(1-min(1,max(0,(t-0.25)/0.6)))':alpha='min(1,max(0,(t-0.25)/0.6))',"
-          + "".join(f"drawtext=fontfile={REG}:textfile={tf(work, f'hook{j}', ln)}:fontcolor=0xD1D5DB:fontsize=42:x=90:y={566+nsize+44+j*58}:alpha='min(1,max(0,(t-0.8-0.15*{j})/0.6))'," for j, ln in enumerate(textwrap.wrap(cfg["hook"], 34)[:2])).rstrip(",") + "[intro];")
+          f"[0:v]{move}[bi];[bi][g1]overlay=x={-q(120)}:y={q(180)}:shortest=1,"
+          f"drawtext=fontfile={BOLD}:textfile={f['label']}:fontcolor={ACC}:fontsize={q(36)}:x='{q(90)}-{q(50)}*(1-min(1,t/0.6))':y={q(470)}:alpha='min(1,t/0.5)',"
+          f"drawbox=x={q(90)}:y={q(524)}:w='max(1,min({q(170)},{q(170)}*(t-0.2)/0.7))':h={q(8)}:color={ACC}:t=fill,"
+          f"drawtext=fontfile={BOLD}:textfile={f['name']}:fontcolor=white:fontsize={nsize}:shadowcolor=black@0.4:shadowy={q(4)}:x={q(90)}:y='{q(566)}+{q(36)}*(1-min(1,max(0,(t-0.25)/0.6)))':alpha='min(1,max(0,(t-0.25)/0.6))',"
+          + "".join(f"drawtext=fontfile={REG}:textfile={tf(work, f'hook{j}', ln)}:fontcolor=0xD1D5DB:fontsize={q(42)}:x={q(90)}:y={q(566)+nsize+q(44+j*58)}:alpha='min(1,max(0,(t-0.8-0.15*{j})/0.6))'," for j, ln in enumerate(textwrap.wrap(cfg["hook"], 34)[:2])).rstrip(",") + "[intro];")
     if has:
-        fc += (f"[7:v]scale=980:613:flags=lanczos,format=rgba[ds];[10:v]format=gray[dm];[ds][dm]alphamerge[dsr];"
-               f"[8:v]scale=300:649:flags=lanczos,format=rgba[ps];[12:v]format=gray[pm];[ps][pm]alphamerge[psr];"
-               f"[1:v]{move}[bd];[bd][g2]overlay=x=60:y=260:shortest=1[b1];"
-               f"[b1][13:v]overlay=x=-12:y=190[b2];[b2][9:v]overlay=x=48:y=248[b3];[b3][dsr]overlay=x=50:y=294[b4];"
-               f"[b4][14:v]overlay=x=650:y=575[b5];[b5][11:v]overlay=x=724:y=636[b6];[b6][psr]overlay=x=736:y=648,"
-               f"drawtext=fontfile={BOLD}:textfile={f['label']}:fontcolor={ACC}:fontsize=26:x=60:y=60,"
-               f"drawtext=fontfile={BOLD}:textfile={f['name']}:fontcolor=white:fontsize=58:x=60:y=104,"
-               f"drawtext=fontfile={MED}:textfile={f['url']}:fontcolor=0x94A3B8:fontsize=26:x=60:y=184,"
+        fc += (f"[7:v]scale={q(980)}:{q(613)}:flags=lanczos,format=rgba[ds];[10:v]format=gray[dm];[ds][dm]alphamerge[dsr];"
+               f"[8:v]scale={q(300)}:{q(649)}:flags=lanczos,format=rgba[ps];[12:v]format=gray[pm];[ps][pm]alphamerge[psr];"
+               f"[1:v]{move}[bd];[bd][g2]overlay=x={q(60)}:y={q(260)}:shortest=1[b1];"
+               f"[b1][13:v]overlay=x={-q(12)}:y={q(190)}[b2];[b2][9:v]overlay=x={q(48)}:y={q(248)}[b3];[b3][dsr]overlay=x={q(50)}:y={q(294)}[b4];"
+               f"[b4][14:v]overlay=x={q(650)}:y={q(575)}[b5];[b5][11:v]overlay=x={q(724)}:y={q(636)}[b6];[b6][psr]overlay=x={q(736)}:y={q(648)},"
+               f"drawtext=fontfile={BOLD}:textfile={f['label']}:fontcolor={ACC}:fontsize={q(26)}:x={q(60)}:y={q(60)},"
+               f"drawtext=fontfile={BOLD}:textfile={f['name']}:fontcolor=white:fontsize={q(58)}:x={q(60)}:y={q(104)},"
+               f"drawtext=fontfile={MED}:textfile={f['url']}:fontcolor=0x94A3B8:fontsize={q(26)}:x={q(60)}:y={q(184)},"
                + ",".join(capf) + ("," if capf else "") +
-               f"drawtext=fontfile={REG}:textfile={f['sub']}:fontcolor=0x94A3B8:fontsize=22:x=60:y=1262,"
-               f"drawbox=x=60:y=1318:w=960:h=4:color=white@0.12:t=fill,drawbox=x=60:y=1318:w='max(1,960*t/{D:.3f})':h=4:color={ACC}:t=fill,trim=duration={D:.3f}[demo];")
+               f"drawtext=fontfile={REG}:textfile={f['sub']}:fontcolor=0x94A3B8:fontsize={q(22)}:x={q(60)}:y={q(1262)},"
+               f"drawbox=x={q(60)}:y={q(1318)}:w={q(960)}:h={q(4)}:color=white@0.12:t=fill,drawbox=x={q(60)}:y={q(1318)}:w='max(1,{q(960)}*t/{D:.3f})':h={q(4)}:color={ACC}:t=fill,trim=duration={D:.3f}[demo];")
     else:
         mids = wrap(cfg["caption"], 22).split("\n")
-        fc += (f"[1:v]{move}[bd];[bd][g2]overlay=x=90:y=200:shortest=1," + ",".join(
-               f"drawtext=fontfile={BOLD}:textfile={tf(work, f'mid{j}', ln)}:fontcolor=white:fontsize=58:x=(w-tw)/2:y={640 + (j - (len(mids) - 1) / 2) * 76:.0f}:alpha='min(1,t/0.6)'"
+        fc += (f"[1:v]{move}[bd];[bd][g2]overlay=x={q(90)}:y={q(200)}:shortest=1," + ",".join(
+               f"drawtext=fontfile={BOLD}:textfile={tf(work, f'mid{j}', ln)}:fontcolor=white:fontsize={q(58)}:x=(w-tw)/2:y={q(640 + (j - (len(mids) - 1) / 2) * 76)}:alpha='min(1,t/0.6)'"
                for j, ln in enumerate(mids)) + "[demo];")
-    fc += (f"[2:v]{move}[bo];[bo][g3]overlay=x=90:y=120:shortest=1,"
-           f"drawtext=fontfile={BOLD}:textfile={f['cta']}:fontcolor={ACC}:fontsize=50:x=(w-tw)/2:y='520+20*(1-min(1,t/0.5))':alpha='min(1,t/0.5)',"
-           f"drawtext=fontfile={BOLD}:textfile={f['url']}:fontcolor=white:fontsize={48 if len(cfg['url_text']) <= 30 else 36}:x=(w-tw)/2:y=610:alpha='min(1,max(0,(t-0.2)/0.5))',"
-           f"drawtext=fontfile={BOLD}:text='Anchit Tandon':fontcolor=0x64748B:fontsize=32:x=(w-tw)/2:y=1180[outro];"
+    fc += (f"[2:v]{move}[bo];[bo][g3]overlay=x={q(90)}:y={q(120)}:shortest=1,"
+           f"drawtext=fontfile={BOLD}:textfile={f['cta']}:fontcolor={ACC}:fontsize={q(50)}:x=(w-tw)/2:y='{q(520)}+{q(20)}*(1-min(1,t/0.5))':alpha='min(1,t/0.5)',"
+           f"drawtext=fontfile={BOLD}:textfile={f['url']}:fontcolor=white:fontsize={q(48 if len(cfg['url_text']) <= 30 else 36)}:x=(w-tw)/2:y={q(610)}:alpha='min(1,max(0,(t-0.2)/0.5))',"
+           f"drawtext=fontfile={BOLD}:text='Anchit Tandon':fontcolor=0x64748B:fontsize={q(32)}:x=(w-tw)/2:y={q(1180)}[outro];"
            f"[intro][demo]xfade=transition=smoothup:duration={X}:offset={t_demo:.3f}[a];[a][outro]xfade=transition=fade:duration={X}:offset={t_out:.3f},"
            f"vignette=angle=PI/6,format=yuv420p[v];"
            f"[4:a]atrim=0:{total:.3f},afade=t=in:d=1.2,afade=t=out:st={total-2.5:.3f}:d=2.5,volume=0.55[mus];"
@@ -229,7 +244,7 @@ def compose(day, cfg, work, nframes, caps, out):
             fc += f"[k{i}]adelay={int(tk*1000)}|{int(tk*1000)},volume=0.16[kk{i}];"; mix.append(f"[kk{i}]")
     fc += "".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=first,alimiter=limit=0.9[aout]"
     cmd = ["ffmpeg", "-y", "-v", "error", *inp, "-filter_complex", fc, "-map", "[v]", "-map", "[aout]", "-r", str(FPS),
-           "-c:v", "libx264", "-preset", os.environ.get("X264_PRESET", "slow"), "-crf", os.environ.get("X264_CRF", "21"),
+           "-c:v", "libx264", "-preset", os.environ.get("X264_PRESET", "medium"), "-crf", os.environ.get("X264_CRF", "17"),
            "-profile:v", "high", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", f"{total:.3f}", out]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode: raise SystemExit(f"ffmpeg failed for {day}: {r.stderr[-1500:]}")
@@ -377,10 +392,15 @@ async def render(days):
                 n, caps = await run_tour(br, cfg, DESK, scenes, f"{work}/desk")
                 n2, _ = await run_tour(br, cfg, PHONE, scenes, f"{work}/phone")
                 n = min(n, n2)
-            total = compose(day, cfg, work, n, caps, out)
-            subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", "4.5", "-i", out, "-frames:v", "1", "-vf", "scale=540:675", "-q:v", "3", out[:-4] + ".jpg"], check=False)
+            master = out[:-4] + "-2160p.mp4"                      # 1728x2160 master for LinkedIn
+            total = compose(day, cfg, work, n, caps, master)
             shutil.rmtree(work, ignore_errors=True)
-            print(f"{out} {os.path.getsize(out)/1e6:.1f} MB {total:.1f}s", flush=True)
+            r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", master, "-vf", "scale=1080:1350:flags=lanczos", "-c:v", "libx264",
+                                "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", out],
+                               capture_output=True, text=True)                 # web copy for the series page
+            if r.returncode: raise SystemExit(f"web copy failed for {day}: {r.stderr[-800:]}")
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", "4.5", "-i", out, "-frames:v", "1", "-vf", "scale=540:675", "-q:v", "3", out[:-4] + ".jpg"], check=False)
+            print(f"{master} {os.path.getsize(master)/1e6:.1f} MB | {out} {os.path.getsize(out)/1e6:.1f} MB | {total:.1f}s", flush=True)
         await br.close()
 if __name__ == "__main__":
     fonts(); visuals(); audio()
