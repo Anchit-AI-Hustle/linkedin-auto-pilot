@@ -24,6 +24,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -100,6 +101,26 @@ def call(method, path, token, version, body=None):
         raise SystemExit(f"LinkedIn API error {err.code}: {detail}")
 
 
+def comment_request(post_urn, author, text):
+    """Path and body for a first comment (Comments API: POST /rest/socialActions/{urn}/comments, scope w_member_social)."""
+    return ("/rest/socialActions/" + urllib.parse.quote(post_urn, safe="") + "/comments",
+            {"actor": author, "object": post_urn, "message": {"text": text}})
+
+
+def add_first_comment(token, version, post_urn, author, text):
+    """Add the first comment. A failure here never undoes the post: it is reported, not raised."""
+    if not (post_urn and text.strip()):
+        return False
+    path, body = comment_request(post_urn, author, text)
+    try:
+        status, _, _ = call("POST", path, token, version, body)
+        print(f"First comment added (HTTP {status}).")
+        return True
+    except SystemExit as err:
+        print(f"First comment NOT added, add it by hand: {err}")
+        return False
+
+
 def person_urn(token, version):
     # /v2/userinfo returns the member id as "sub" for apps with Sign In with LinkedIn (OpenID Connect).
     _, _, info = call("GET", "/v2/userinfo", token, version)
@@ -158,7 +179,9 @@ def main():
     posted[str(post["day"])] = {"date": date_str, "at": now.isoformat(timespec="seconds"), "title": post["title"], "urn": urn}
     json.dump(posted, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     print(f"Published Day {post['day']} (HTTP {status}) {urn}")
-    print("First comment to add by hand: " + post.get("first_comment", ""))
+    if add_first_comment(token, version, urn, author, post.get("first_comment", "")):
+        posted[str(post["day"])]["commented"] = True
+        json.dump(posted, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     return 0
 
 
