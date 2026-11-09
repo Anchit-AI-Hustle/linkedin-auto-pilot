@@ -124,10 +124,26 @@ def add_first_comment(token, version, post_urn, author, text):
         return False
 
 
+RELEASE = "https://github.com/Anchit-AI-Hustle/linkedin-auto-pilot/releases/download/demo-videos/"
+
+
 def video_for(day):
-    """The rendered demo video for a post, or None if there isn't one."""
-    found = sorted(glob.glob(os.path.join(VIDEOS, f"demo-{int(day):02d}-*.mp4")))
-    return found[0] if found else None
+    """The demo video for a post: the 2160p master from the release if it can be fetched, else the web copy, else None."""
+    found = sorted(f for f in glob.glob(os.path.join(VIDEOS, f"demo-{int(day):02d}-*.mp4")) if not f.endswith("-2160p.mp4"))
+    if not found:
+        return None
+    web = found[0]
+    if os.environ.get("USE_2160P", "true").lower() != "false":
+        name = os.path.basename(web)[:-4] + "-2160p.mp4"
+        dest = os.path.join(HERE, name)
+        try:
+            if not os.path.exists(dest):
+                urllib.request.urlretrieve(RELEASE + name, dest)
+            if os.path.getsize(dest) > 75000:
+                return dest
+        except Exception as err:
+            print(f"2160p master not available ({err}); using the web copy.")
+    return web
 
 
 def put_bytes(url, data, token, content_type="application/octet-stream"):
@@ -224,7 +240,7 @@ def main():
     }
     clip = video_for(post["day"])
     if clip and os.environ.get("ATTACH_VIDEO", "true").lower() != "false":
-        poster = clip[:-4] + ".jpg"
+        poster = os.path.join(VIDEOS, os.path.basename(clip).replace("-2160p", "")[:-4] + ".jpg")
         video = upload_video(token, version, author, clip, poster if os.path.exists(poster) else None)
         if video:
             body["content"] = {"media": {"id": video, "title": post["title"] + " demo"}}
