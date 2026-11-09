@@ -90,7 +90,7 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
         ap.QUEUE, ap.STATE, ap.PAUSE = (os.path.join(tmp, "posts.json"), os.path.join(tmp, "posted.json"),
                                         os.path.join(tmp, "PAUSE"))
         ap.call = fake_call
-        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false")
+        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false", ATTACH_VIDEO="false")
         saved = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:
@@ -196,6 +196,65 @@ class FirstComment(unittest.TestCase):
     def test_no_comment_without_urn_or_text(self):
         self.assertFalse(ap.add_first_comment("t", "v", "", "a", "hi"))
         self.assertFalse(ap.add_first_comment("t", "v", "urn:li:share:1", "a", "  "))
+
+
+class VideoUpload(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.clip = os.path.join(self.tmp, "demo-04-loosenup.mp4")
+        open(self.clip, "wb").write(b"x" * 2500)
+        self.saved = (ap.call, ap.put_bytes, ap.time.sleep)
+        ap.time.sleep = lambda s: None
+
+    def tearDown(self):
+        ap.call, ap.put_bytes, ap.time.sleep = self.saved
+
+    def test_full_flow_uploads_every_part_and_waits_for_available(self):
+        calls, puts, polls = [], [], iter(["PROCESSING", "AVAILABLE"])
+        def fake_call(method, path, token, version, body=None):
+            calls.append((method, path, body))
+            if "initializeUpload" in path:
+                return 200, {}, {"value": {"video": "urn:li:video:V1", "uploadToken": "",
+                    "uploadInstructions": [{"uploadUrl": "https://up/1", "firstByte": 0, "lastByte": 1999},
+                                           {"uploadUrl": "https://up/2", "firstByte": 2000, "lastByte": 2499}]}}
+            if path.startswith("/rest/videos/"):
+                return 200, {}, {"status": next(polls)}
+            return 200, {}, {}
+        ap.call = fake_call
+        ap.put_bytes = lambda url, data, token, ct="application/octet-stream": puts.append((url, len(data))) or "etag-" + url[-1]
+        self.assertEqual(ap.upload_video("t", "202605", "urn:li:person:a", self.clip), "urn:li:video:V1")
+        self.assertEqual(puts, [("https://up/1", 2000), ("https://up/2", 500)])
+        init = calls[0][2]["initializeUploadRequest"]
+        self.assertEqual((init["owner"], init["fileSizeBytes"]), ("urn:li:person:a", 2500))
+        fin = [c for c in calls if "finalizeUpload" in c[1]][0][2]["finalizeUploadRequest"]
+        self.assertEqual(fin["uploadedPartIds"], ["etag-1", "etag-2"])
+
+    def test_any_failure_means_text_only_never_a_missed_post(self):
+        def boom(*a, **k): raise SystemExit("LinkedIn API error 403")
+        ap.call = boom
+        self.assertIsNone(ap.upload_video("t", "v", "urn:li:person:a", self.clip))
+
+    def test_processing_failed_is_not_attached(self):
+        def fake_call(method, path, token, version, body=None):
+            if "initializeUpload" in path:
+                return 200, {}, {"value": {"video": "urn:li:video:V2", "uploadInstructions": [
+                    {"uploadUrl": "https://up/1", "firstByte": 0, "lastByte": 2499}]}}
+            if path.startswith("/rest/videos/"):
+                return 200, {}, {"status": "PROCESSING_FAILED"}
+            return 200, {}, {}
+        ap.call = fake_call
+        ap.put_bytes = lambda *a, **k: "e"
+        self.assertIsNone(ap.upload_video("t", "v", "urn:li:person:a", self.clip))
+
+    def test_finds_rendered_video_by_post_number(self):
+        saved = ap.VIDEOS
+        ap.VIDEOS = self.tmp
+        try:
+            self.assertEqual(ap.video_for(4), self.clip)
+            self.assertIsNone(ap.video_for(5))
+        finally:
+            ap.VIDEOS = saved
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
