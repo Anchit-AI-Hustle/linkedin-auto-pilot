@@ -251,8 +251,16 @@ class VideoUpload(unittest.TestCase):
         saved = ap.VIDEOS
         ap.VIDEOS = self.tmp
         try:
+            os.environ["USE_2160P"] = "false"
             self.assertEqual(ap.video_for(4), self.clip)
             self.assertIsNone(ap.video_for(5))
+            os.environ["USE_2160P"] = "true"
+            saved_rel = ap.RELEASE
+            ap.RELEASE = "http://127.0.0.1:9/nothing/"          # unreachable: must fall back to the web copy
+            try:
+                self.assertEqual(ap.video_for(4), self.clip)
+            finally:
+                ap.RELEASE = saved_rel
         finally:
             ap.VIDEOS = saved
 
