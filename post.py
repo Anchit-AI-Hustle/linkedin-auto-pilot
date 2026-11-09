@@ -19,10 +19,12 @@ The series starts when the PAUSE file is removed (the "Start posting" workflow
 does this) and then publishes the next unposted day, one per day, in order.
 """
 import datetime
+import glob
 import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,6 +34,7 @@ QUEUE = os.path.join(HERE, "posts.json")
 STATE = os.path.join(HERE, "posted.json")
 PAUSE = os.path.join(HERE, "PAUSE")
 API = "https://api.linkedin.com"
+VIDEOS = os.path.join(HERE, "linkedin-auto-pilot", "videos")  # rendered by the "Demo videos" workflow
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
 # Characters LinkedIn's little text format reserves (Microsoft Learn, "little text format").
@@ -121,6 +124,51 @@ def add_first_comment(token, version, post_urn, author, text):
         return False
 
 
+def video_for(day):
+    """The rendered demo video for a post, or None if there isn't one."""
+    found = sorted(glob.glob(os.path.join(VIDEOS, f"demo-{int(day):02d}-*.mp4")))
+    return found[0] if found else None
+
+
+def put_bytes(url, data, token, content_type="application/octet-stream"):
+    req = urllib.request.Request(url, data=data, method="PUT")
+    req.add_header("Authorization", "Bearer " + token)
+    req.add_header("Content-Type", content_type)
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return resp.headers.get("ETag", "").strip()
+
+
+def upload_video(token, version, author, path, poster=None, wait_seconds=300):
+    """Videos API: initializeUpload -> PUT each part -> finalizeUpload -> wait until AVAILABLE.
+    Returns the video URN, or None on any failure (the post then goes out as text, on time)."""
+    try:
+        data = open(path, "rb").read()
+        _, _, init = call("POST", "/rest/videos?action=initializeUpload", token, version, {"initializeUploadRequest": {
+            "owner": author, "fileSizeBytes": len(data), "uploadCaptions": False, "uploadThumbnail": bool(poster)}})
+        value = init["value"]; video = value["video"]
+        etags = [put_bytes(part["uploadUrl"], data[part["firstByte"]:part["lastByte"] + 1], token)
+                 for part in value["uploadInstructions"]]
+        if poster and value.get("thumbnailUploadUrl"):
+            try: put_bytes(value["thumbnailUploadUrl"], open(poster, "rb").read(), token, "image/jpeg")
+            except Exception as err: print(f"Thumbnail skipped: {err}")
+        call("POST", "/rest/videos?action=finalizeUpload", token, version, {"finalizeUploadRequest": {
+            "video": video, "uploadToken": value.get("uploadToken", ""), "uploadedPartIds": etags}})
+        deadline = time.time() + wait_seconds
+        while True:
+            _, _, info = call("GET", "/rest/videos/" + urllib.parse.quote(video, safe=""), token, version)
+            status = info.get("status")
+            if status == "AVAILABLE":
+                print(f"Video ready: {os.path.basename(path)} ({len(data) / 1e6:.1f} MB) {video}")
+                return video
+            if status == "PROCESSING_FAILED" or time.time() > deadline:
+                print(f"Video not used ({status}); posting text only.")
+                return None
+            time.sleep(10)
+    except (SystemExit, Exception) as err:
+        print(f"Video not used ({err}); posting text only.")
+        return None
+
+
 def person_urn(token, version):
     # /v2/userinfo returns the member id as "sub" for apps with Sign In with LinkedIn (OpenID Connect).
     _, _, info = call("GET", "/v2/userinfo", token, version)
@@ -174,6 +222,12 @@ def main():
         "lifecycleState": "PUBLISHED",
         "isReshareDisabledByAuthor": False,
     }
+    clip = video_for(post["day"])
+    if clip and os.environ.get("ATTACH_VIDEO", "true").lower() != "false":
+        poster = clip[:-4] + ".jpg"
+        video = upload_video(token, version, author, clip, poster if os.path.exists(poster) else None)
+        if video:
+            body["content"] = {"media": {"id": video, "title": post["title"] + " demo"}}
     status, headers, _ = call("POST", "/rest/posts", token, version, body)
     urn = headers.get("x-restli-id") or headers.get("X-RestLi-Id") or ""
     posted[str(post["day"])] = {"date": date_str, "at": now.isoformat(timespec="seconds"), "title": post["title"], "urn": urn}
