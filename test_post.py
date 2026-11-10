@@ -59,9 +59,26 @@ class Schedule(unittest.TestCase):
         self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T08:40:00+05:30")))
         self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T12:59:00+05:30")))
 
-    def test_delayed_run_still_posts_once_gap_passes(self):
+    def test_one_post_per_slot(self):
         done = {"0": {"at": "2026-12-01T08:00:00+05:30"}}
-        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T13:01:00+05:30"))["day"], 1)
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T13:01:00+05:30")))   # still the 8 AM slot
+
+    def test_missed_schedule_is_caught_up_within_the_slot(self):
+        done = {"0": {"at": "2026-12-01T08:30:00+05:30"}}
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T15:17:00+05:30"))["day"], 1)   # 2 PM slot, 77 min late
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T18:30:00+05:30")))          # window passed
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T18:30:00+05:30"), force=True)["day"], 1)
+
+    def test_hourly_runs_never_double_post(self):
+        done = {"0": {"at": "2026-12-01T15:17:00+05:30"}}
+        for hh in ("16:17", "17:17", "19:17"):
+            self.assertIsNone(ap.pick(self.queue, done, self.T(f"2026-12-01T{hh}:00+05:30")))
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T20:17:00+05:30"))["day"], 1)
+
+    def test_slot_boundaries_including_2am(self):
+        self.assertEqual(ap.slot_start(self.T("2026-12-02T02:17:00+05:30")).hour, 2)
+        self.assertEqual(ap.slot_start(self.T("2026-12-02T01:59:00+05:30")).isoformat()[:13], "2026-12-01T20")
+        self.assertEqual(ap.slot_start(self.T("2026-12-02T23:00:00+05:30")).hour, 20)
 
     def test_stops_when_series_is_done(self):
         done = {"0": {"at": "2026-12-01T02:00:00+05:30"}, "1": {"at": "2026-12-01T08:00:00+05:30"}}
@@ -90,7 +107,7 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
         ap.QUEUE, ap.STATE, ap.PAUSE = (os.path.join(tmp, "posts.json"), os.path.join(tmp, "posted.json"),
                                         os.path.join(tmp, "PAUSE"))
         ap.call = fake_call
-        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false", ATTACH_VIDEO="false")
+        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false", ATTACH_VIDEO="false", PREVIEW_CARD="false", REQUIRE_READY="false")
         saved = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:
@@ -188,10 +205,11 @@ class FirstComment(unittest.TestCase):
         original = ap.call
         def boom(*a, **k): raise SystemExit("LinkedIn API error 403: no")
         ap.call = boom
+        sleep = ap.time.sleep; ap.time.sleep = lambda s: None
         try:
             self.assertFalse(ap.add_first_comment("t", "202510", "urn:li:share:1", "urn:li:person:a", "hi"))
         finally:
-            ap.call = original
+            ap.call = original; ap.time.sleep = sleep
 
     def test_no_comment_without_urn_or_text(self):
         self.assertFalse(ap.add_first_comment("t", "v", "", "a", "hi"))
@@ -252,6 +270,8 @@ class VideoUpload(unittest.TestCase):
         ap.VIDEOS = self.tmp
         try:
             os.environ["USE_2160P"] = "false"
+            self.assertIsNone(ap.video_for(4))                       # not reviewed yet: never attached
+            json.dump([os.path.basename(self.clip)], open(os.path.join(self.tmp, "verified.json"), "w"))
             self.assertEqual(ap.video_for(4), self.clip)
             self.assertIsNone(ap.video_for(5))
             os.environ["USE_2160P"] = "true"
@@ -263,6 +283,97 @@ class VideoUpload(unittest.TestCase):
                 ap.RELEASE = saved_rel
         finally:
             ap.VIDEOS = saved
+
+
+class PreviewCard(unittest.TestCase):
+    def setUp(self):
+        self.saved = (ap.call, ap.put_bytes, ap.page_meta, ap.urllib.request.urlopen)
+
+    def tearDown(self):
+        ap.call, ap.put_bytes, ap.page_meta, ap.urllib.request.urlopen = self.saved
+
+    def test_every_queued_post_has_its_own_link(self):
+        with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
+            for p in json.load(fh):
+                url = ap.site_url(p)
+                self.assertTrue(url and url.startswith("https://"), p["day"])
+                self.assertNotIn("/get", url, p["day"])
+
+    def test_card_uses_page_tags_and_uploaded_image(self):
+        ap.page_meta = lambda url: {"title": "Parwah - the family superapp", "description": "Family superapp", "image": "https://x/og.png"}
+        class R:
+            def read(self, *a): return b"PNG" * 10
+        ap.urllib.request.urlopen = lambda *a, **k: R()
+        calls = []
+        def fake_call(method, path, token, version, body=None):
+            calls.append(path)
+            return 200, {}, {"value": {"uploadUrl": "https://up/img", "image": "urn:li:image:I1"}}
+        ap.call = fake_call
+        ap.put_bytes = lambda *a, **k: "e"
+        post_ = {"title": "Parwah", "post": "x\n\U0001f310 Website: parwah-hq.anchit-tandon.com\n\U0001f5c2\ufe0f Portfolio: anchit-tandon.com"}
+        card = ap.article_content("t", "v", "urn:li:person:a", post_)
+        self.assertEqual(card["article"], {"source": "https://parwah-hq.anchit-tandon.com", "title": "Parwah - the family superapp",
+                                           "description": "Family superapp", "thumbnail": "urn:li:image:I1"})
+        self.assertEqual(calls, ["/rest/images?action=initializeUpload"])
+
+    def test_card_still_goes_out_if_image_fails(self):
+        ap.page_meta = lambda url: {"title": "T", "description": "", "image": "https://x/og.png"}
+        def boom(*a, **k): raise OSError("no image")
+        ap.urllib.request.urlopen = boom
+        card = ap.article_content("t", "v", "a", {"title": "T", "post": "\U0001f310 Website: a.example.com"})
+        self.assertEqual(card["article"], {"source": "https://a.example.com", "title": "T"})
+
+
+class Readiness(unittest.TestCase):
+    """A post never goes out before its demo video is a reviewed full tour."""
+    def run_live(self, verified):
+        import tempfile, shutil
+        tmp = tempfile.mkdtemp()
+        for f in ("post.py", "posts.json"):
+            shutil.copy(os.path.join(HERE, f), tmp)
+        json.dump({}, open(os.path.join(tmp, "posted.json"), "w"))
+        vids = os.path.join(tmp, "linkedin-auto-pilot", "videos"); os.makedirs(vids)
+        open(os.path.join(vids, "demo-00-23-products.mp4"), "wb").write(b"x" * 100)
+        if verified:
+            json.dump(["demo-00-23-products.mp4"], open(os.path.join(vids, "verified.json"), "w"))
+        e = dict(os.environ, DRY_RUN="false", LINKEDIN_ACCESS_TOKEN="fake", POST_AT="2030-01-01T08:05:00+05:30",
+                 USE_2160P="false", LINKEDIN_VERSION="202605")
+        r = subprocess.run([sys.executable, os.path.join(tmp, "post.py")], env=e, capture_output=True, text=True)
+        return r, json.load(open(os.path.join(tmp, "posted.json")))
+
+    def test_holds_when_video_not_reviewed(self):
+        r, posted = self.run_live(verified=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Holding Day 0", r.stdout)
+        self.assertEqual(posted, {})
+
+    def test_reviewed_video_proceeds_to_publishing(self):
+        r, posted = self.run_live(verified=True)       # fake token: it gets past the gate and fails at LinkedIn
+        self.assertNotIn("Holding", r.stdout)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(posted, {})
+
+    def test_catch_up_comments_only_recent_and_missing(self):
+        calls = []
+        saved = (ap.add_first_comment, ap.person_urn)
+        ap.add_first_comment = lambda t, v, urn, a, text: calls.append(urn) or True
+        ap.person_urn = lambda t, v: "urn:li:person:a"
+        posted = {"3": {"urn": "u3", "at": "2030-01-01T02:00:00+05:30", "commented": True},
+                  "4": {"urn": "u4", "at": "2030-01-01T03:00:00+05:30"},
+                  "1": {"urn": "u1", "at": "2029-12-30T03:00:00+05:30"}}
+        queue = [{"day": d, "first_comment": "hi"} for d in (1, 3, 4)]
+        import tempfile
+        saved_state = ap.STATE; ap.STATE = tempfile.mktemp()
+        try:
+            ap.catch_up_comments("t", "v", queue, posted, self_T("2030-01-01T08:00:00+05:30"))
+        finally:
+            ap.add_first_comment, ap.person_urn = saved; ap.STATE = saved_state
+        self.assertEqual(calls, ["u4"])
+        self.assertTrue(posted["4"]["commented"])
+
+
+def self_T(s):
+    return datetime.datetime.fromisoformat(s)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
