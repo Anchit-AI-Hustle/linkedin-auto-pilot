@@ -288,8 +288,12 @@ async def plan_tour(browser, cfg):
     except Exception: pass
     await settle(pg, 1500); await dismiss(pg)
     scenes = [{"kind": "home", "label": cfg.get("caption") or cfg["name"]}]
-    for a in cfg.get("actions") or []:
-        if "click" in a: scenes.append({"kind": "click", "target": a["click"], "label": a.get("label", a["click"]), "sec": a.get("hold", 3)})
+    for a in (cfg.get("scenes") or []) + (cfg.get("actions") or []):
+        if "click" in a:
+            scenes.append({"kind": "click", "target": a["click"], "label": a.get("label", a["click"]), "sec": a.get("sec", a.get("hold", 3)),
+                           "fill": a.get("fill"), "scroll": a.get("scroll", True)})
+        elif "url" in a:
+            scenes.append({"kind": "url", "target": urljoin(site, a["url"]), "label": a.get("label", a["url"]), "sec": a.get("sec")})
     seen = {root or "/"}; pages = []
     for l in await pg.evaluate(LINKS_JS):
         u = urlparse(l["h"])
@@ -346,8 +350,13 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
             await settle(pg, 1000)
             if sc["kind"] == "home": await dismiss(pg)
         else:
+            for sel, text in (sc.get("fill") or {}).items():          # type into a field before the click
+                try:
+                    f = pg.locator(sel).first
+                    if await f.is_visible(): await f.fill(text)
+                except Exception: pass
             clicked = False
-            for loc in (pg.get_by_role("tab", name=sc["target"]), pg.get_by_role("button", name=sc["target"]),
+            for loc in (pg.get_by_role("button", name=sc["target"], exact=True), pg.get_by_role("tab", name=sc["target"]), pg.get_by_role("button", name=sc["target"]),
                         pg.get_by_role("link", name=sc["target"]), pg.get_by_text(sc["target"], exact=False)):
                 try:
                     if await loc.count() and await loc.first.is_visible():
@@ -366,6 +375,10 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
         hold = min(k, round(0.6 * FPS)); scroll = k - hold
         y0 = await pg.evaluate("scrollY"); maxy = await pg.evaluate("document.documentElement.scrollHeight-innerHeight")
         y1 = max(y0, min(maxy - spec["h"] * 0.5, y0 + spec["h"] * 1.1))   # show the page, not its footer
+        if sc.get("scroll") is False: y1 = y0                              # live screens (animations) stay put
+        if sc["kind"] == "click" and sc.get("scroll") is not False:
+            try: await pg.evaluate("window.scrollTo(0,0)"); y0 = 0; y1 = min(y1, spec["h"] * 0.8)
+            except Exception: pass
         for _ in range(hold): await shot()
         for j in range(scroll):
             await pg.evaluate(f"window.scrollTo(0,{y0 + (y1 - y0) * ease((j + 1) / scroll):.1f})"); await shot()
