@@ -69,7 +69,73 @@
   "hook": "Built for your worst 2 minutes, not your best 20",
   "caption": "No sign-up. SOS on every screen.",
   "url_text": "loosenup.anchit-tandon.com",
-  "site": "https://loosenup.anchit-tandon.com"
+  "site": "https://loosenup.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "हिन्दी",
+    "label": "English and Hindi",
+    "sec": 2.6,
+    "scroll": false
+   },
+   {
+    "click": "English",
+    "label": "Two calm minutes",
+    "sec": 2.2,
+    "scroll": false
+   },
+   {
+    "click": "Let's begin",
+    "fill": {
+     "input": "Anchit"
+    },
+    "label": "Pick what brings you here",
+    "sec": 3.4
+   },
+   {
+    "click": "Calmer workdays",
+    "label": "Pick what brings you here",
+    "sec": 1.6,
+    "scroll": false
+   },
+   {
+    "click": "Start my first break",
+    "label": "Rate your calm, 1 to 10",
+    "sec": 3.4
+   },
+   {
+    "click": "Work",
+    "label": "Say what is going on",
+    "sec": 2.0,
+    "scroll": false
+   },
+   {
+    "click": "Next",
+    "label": "A break picked for you",
+    "sec": 3.6
+   },
+   {
+    "click": "Begin",
+    "label": "A guided two-minute break",
+    "sec": 7.0,
+    "scroll": false
+   },
+   {
+    "click": "Finish early",
+    "label": "Rate your calm again",
+    "sec": 3.0
+   },
+   {
+    "click": "See my Calm gain",
+    "label": "See your Calm gain",
+    "sec": 4.0
+   },
+   {
+    "click": "SOS",
+    "label": "SOS on every screen",
+    "sec": 4.0,
+    "scroll": false
+   }
+  ]
  },
  "5": {
   "label": "PROJECT 5/23",
