@@ -1,10 +1,12 @@
 name: LinkedIn post every 6 hours
 
-# Posts the next approved post at 2 AM, 8 AM, 2 PM and 8 PM IST
-# (20:30, 02:30, 08:30 and 14:30 UTC). Can also be run by hand.
+# Posts the next approved post in each slot: 2 AM, 8 AM, 2 PM and 8 PM IST.
+# GitHub can drop or delay scheduled runs, so this runs every hour (at :17, away from
+# the busy top of the hour) and post.py posts at most once per slot, catching up to
+# 4 hours late. Running it by hand posts the next post now.
 on:
   schedule:
-    - cron: "30 2,8,14,20 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -30,10 +32,23 @@ jobs:
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
         run: python post.py
       - name: Record what was posted
         run: |
           git config user.name "linkedin-auto-pilot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add posted.json
-          git diff --cached --quiet || (git commit -m "Posted $(date -u +%F)" && git push)
+          git diff --cached --quiet && exit 0
+          git commit -m "Posted $(date -u +%F)"
+          # Other workflows also push (series page refresh). Rebase and retry so the
+          # record always lands; a lost record would let the next hourly run repost.
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q origin main && git push && exit 0
+            sleep $((i * 10))
+          done
+          echo "::error::Could not save posted.json; pausing the series to prevent a double post."
+          echo "Paused after a failed save. Check posted.json, then run Start posting." > PAUSE
+          git add PAUSE posted.json && git commit -qm "Pause: posted.json save failed" || true
+          git pull --rebase -q origin main && git push || true
+          exit 1
