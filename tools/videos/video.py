@@ -264,8 +264,10 @@ TABS_JS = """()=>{const out=[];const seen=new Set();
 TITLE_JS = """()=>{const h=document.querySelector('main h1,h1,main h2,h2');const t=(h&&h.innerText||document.title||'').replace(/\\s+/g,' ').trim();return t.slice(0,60);}"""
 def nice(label, fallback):
     t = re.sub(r"\s+", " ", (label or "")).strip(" -|·→>")
-    if len(t) < 3 or len(t) > 40 or SKIP_TEXT.match(t): t = fallback
-    return t[:40]
+    if len(t) < 3 or len(t) > 40 or SKIP_TEXT.match(t): t = re.sub(r"\s+", " ", fallback or "").strip()
+    if len(t) > 44:                                              # shorten at a word, never mid-word
+        t = textwrap.shorten(t, 44, placeholder="").rstrip(" ,.;:-")
+    return t
 async def settle(pg, ms=1200):
     try: await pg.wait_for_load_state("networkidle", timeout=8000)
     except Exception: pass
@@ -343,7 +345,16 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
     XF = 8                                                         # cross-fade frames between scenes
     async def shot():
         nonlocal n
-        await pg.screenshot(path=f"{frames_dir}/{n:05d}.jpg", type="jpeg", quality=92); n += 1
+        path = f"{frames_dir}/{n:05d}.jpg"
+        try:
+            await asyncio.wait_for(pg.screenshot(path=path, type="jpeg", quality=92, timeout=15000), 20)
+        except Exception:
+            if n: shutil.copyfile(f"{frames_dir}/{n-1:05d}.jpg", path)       # keep the last good frame
+            else: Image.new("RGB", (spec["w"] * spec["dpr"], spec["h"] * spec["dpr"]), (10, 12, 22)).save(path, quality=92)
+        n += 1
+    async def js(expr, default=0):
+        try: return await asyncio.wait_for(pg.evaluate(expr), 8)
+        except Exception: return default
     for i, sc in enumerate(scenes):
         sec = sc.get("sec") or (per + 1.5 if sc["kind"] == "home" else per)
         if sc["kind"] == "show":                                    # bring a section of the current page into view
@@ -389,15 +400,14 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
         marks.append((t, sc["label"]))
         k = round(sec * FPS); start_n = n
         hold = min(k, round(0.6 * FPS)); scroll = k - hold
-        y0 = await pg.evaluate("scrollY"); maxy = await pg.evaluate("document.documentElement.scrollHeight-innerHeight")
+        y0 = await js("scrollY"); maxy = await js("document.documentElement.scrollHeight-innerHeight")
         y1 = max(y0, min(maxy - spec["h"] * 0.5, y0 + spec["h"] * 1.1))   # show the page, not its footer
         if sc.get("scroll") is False: y1 = y0                              # live screens (animations) stay put
         if sc["kind"] == "click" and sc.get("scroll") is not False:
-            try: await pg.evaluate("window.scrollTo(0,0)"); y0 = 0; y1 = min(y1, spec["h"] * 0.8)
-            except Exception: pass
+            await js("window.scrollTo(0,0)"); y0 = 0; y1 = min(y1, spec["h"] * 0.8)
         for _ in range(hold): await shot()
         for j in range(scroll):
-            await pg.evaluate(f"window.scrollTo(0,{y0 + (y1 - y0) * ease((j + 1) / scroll):.1f})"); await shot()
+            await js(f"window.scrollTo(0,{y0 + (y1 - y0) * ease((j + 1) / scroll):.1f})"); await shot()
         if i and start_n >= XF:                                          # blend the scene change so it never jumps
             prev = Image.open(f"{frames_dir}/{start_n - 1:05d}.jpg").convert("RGB")
             for f in range(min(XF, n - start_n)):
@@ -418,8 +428,9 @@ async def render(days):
             if cfg.get("site"):
                 scenes = await plan_tour(br, cfg)
                 print(f"  tour: {len(scenes)} scenes: " + " | ".join(x["label"] for x in scenes), flush=True)
-                n, caps = await run_tour(br, cfg, DESK, scenes, f"{work}/desk")
-                n2, _ = await run_tour(br, cfg, PHONE, scenes, f"{work}/phone")
+                limit = float(os.environ.get("TOUR_LIMIT_SECONDS", "1500"))     # a stuck site can never hold up the render
+                n, caps = await asyncio.wait_for(run_tour(br, cfg, DESK, scenes, f"{work}/desk"), limit)
+                n2, _ = await asyncio.wait_for(run_tour(br, cfg, PHONE, scenes, f"{work}/phone"), limit)
                 n = min(n, n2)
             master = out[:-4] + "-2160p.mp4"                      # 1728x2160 master for LinkedIn
             total = compose(day, cfg, work, n, caps, master)
