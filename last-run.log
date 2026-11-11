@@ -1,0 +1,6 @@
+Run at 2026-11-11T01:14:02+00:00 UTC
+First comment attempt 1 failed: LinkedIn API error 403: {"status":403,"serviceErrorCode":100,"code":"ACCESS_DENIED","message":"Not enough permissions to access: partnerApiSocialActions.CREATE.20260501"}
+First comment attempt 2 failed: LinkedIn API error 403: {"status":403,"serviceErrorCode":100,"code":"ACCESS_DENIED","message":"Not enough permissions to access: partnerApiSocialActions.CREATE.20260501"}
+First comment attempt 3 failed: LinkedIn API error 403: {"status":403,"serviceErrorCode":100,"code":"ACCESS_DENIED","message":"Not enough permissions to access: partnerApiSocialActions.CREATE.20260501"}
+First comment NOT added; the next hourly run will try again.
+Nothing to post at 2026-11-11T06:44+05:30: this slot (from 2 AM IST) already has its post, its 4-hour window has passed, or the series is finished.
