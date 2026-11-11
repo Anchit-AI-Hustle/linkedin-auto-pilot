@@ -5,7 +5,39 @@
   "hook": "Real, working products one every 6 hours",
   "caption": "From family care to disaster prediction",
   "url_text": "anchit-tandon.com",
-  "site": "https://anchit-tandon.com"
+  "site": "https://anchit-tandon.com",
+  "scenes": [
+   {
+    "url": "/#projects",
+    "label": "23 live products, all in one place",
+    "sec": 6
+   },
+   {
+    "url": "/linkedin-auto-pilot",
+    "label": "Every post and demo, one page",
+    "sec": 6
+   },
+   {
+    "url": "/games",
+    "label": "17 browser games",
+    "sec": 4.5
+   },
+   {
+    "url": "/movies",
+    "label": "Films made entirely in code",
+    "sec": 4.5
+   },
+   {
+    "url": "/jobhunt",
+    "label": "A live job-search agent",
+    "sec": 4
+   },
+   {
+    "url": "/#chat",
+    "label": "Ask me anything",
+    "sec": 4.5
+   }
+  ]
  },
  "1": {
   "label": "PROJECT 1/23",
@@ -21,7 +53,34 @@
   "hook": "My take on JARVIS for everyday work",
   "caption": "Listens, sees, plans and acts",
   "url_text": "the-third-eye.anchit-tandon.com",
-  "site": "https://the-third-eye.anchit-tandon.com"
+  "site": "https://the-third-eye.anchit-tandon.com",
+  "scenes": [
+   {
+    "show": "What you can do with The Third Eye",
+    "label": "What it can do for you",
+    "sec": 4.5
+   },
+   {
+    "show": "How it works",
+    "label": "How it works",
+    "sec": 4
+   },
+   {
+    "show": "Your data and why we ask for it",
+    "label": "Your data stays yours",
+    "sec": 4
+   },
+   {
+    "url": "/get",
+    "label": "Get it on your phone",
+    "sec": 4
+   },
+   {
+    "url": "/privacy",
+    "label": "What it keeps when you sign in",
+    "sec": 4
+   }
+  ]
  },
  "3": {
   "label": "PROJECT 3/23",
@@ -60,6 +119,18 @@
     "click": "Next",
     "hold": 3.2,
     "label": "Free for families"
+   }
+  ],
+  "scenes": [
+   {
+    "url": "/welcome/",
+    "label": "About Parwah",
+    "sec": 5
+   },
+   {
+    "url": "/get/",
+    "label": "Get Parwah on your phone",
+    "sec": 4.5
    }
   ]
  },
@@ -151,7 +222,55 @@
   "hook": "One learning plan from birth to Class 12",
   "caption": "Aligned to NCERT and the NCF",
   "url_text": "edu-ai.anchit-tandon.com",
-  "site": "https://edu-ai.anchit-tandon.com"
+  "site": "https://edu-ai.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Launch Student Flow →",
+    "label": "Student mode: a guided learning day",
+    "sec": 4.5
+   },
+   {
+    "click": "Today's Schedule",
+    "label": "Step 1: today's 60-minute plan",
+    "sec": 4
+   },
+   {
+    "click": "5-Step Lesson Panchpad",
+    "label": "Step 2: a five-step lesson",
+    "sec": 4
+   },
+   {
+    "click": "Adaptive Quiz",
+    "label": "Step 3: a quiz that finds gaps",
+    "sec": 4
+   },
+   {
+    "click": "XP & Badges",
+    "label": "Step 4: XP, badges and streaks",
+    "sec": 4
+   },
+   {
+    "click": "Curriculum Explorer",
+    "label": "The full curriculum, class by class",
+    "sec": 4.5
+   },
+   {
+    "click": "Mock Exam Engine",
+    "label": "Mock exams for CBSE and JEE",
+    "sec": 4
+   },
+   {
+    "click": "Parent Mode",
+    "label": "Parent hub: progress and safety",
+    "sec": 4.5
+   },
+   {
+    "click": "हिंदी",
+    "label": "Works in Hindi too",
+    "sec": 3,
+    "scroll": false
+   }
+  ]
  },
  "7": {
   "label": "PROJECT 7/23",
@@ -167,7 +286,34 @@
   "hook": "A Hinglish AI companion you can call like a friend",
   "caption": "The call never goes quiet",
   "url_text": "hey-yaara.anchit-tandon.com",
-  "site": "https://hey-yaara.anchit-tandon.com"
+  "site": "https://hey-yaara.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Talk with Yaara",
+    "label": "Talk to Yaara in Hinglish",
+    "sec": 4.5
+   },
+   {
+    "click": "Music Hub",
+    "label": "A music hub with songs to play",
+    "sec": 4
+   },
+   {
+    "click": "Games Center",
+    "label": "Games to keep the mind sharp",
+    "sec": 4
+   },
+   {
+    "click": "Call History",
+    "label": "Every conversation, saved",
+    "sec": 3.5
+   },
+   {
+    "click": "Home",
+    "label": "Namaste, Yaara yahi hai",
+    "sec": 3
+   }
+  ]
  },
  "9": {
   "label": "PROJECT 9/23",
@@ -191,7 +337,79 @@
   "hook": "A backtest that loses money on purpose",
   "caption": "Real costs, real rules, no cheating",
   "url_text": "markets-pro.anchit-tandon.com",
-  "site": "https://markets-pro.anchit-tandon.com"
+  "site": "https://markets-pro.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Start with my amount",
+    "fill": {
+     "input[type=number]": "100000"
+    },
+    "label": "Start with the amount you have",
+    "sec": 4.5
+   },
+   {
+    "click": "See today’s 2 suggestions",
+    "label": "Today's suggestions, with the reasons",
+    "sec": 5
+   },
+   {
+    "click": "Dashboard",
+    "label": "Your dashboard",
+    "sec": 4,
+    "phone": "Today"
+   },
+   {
+    "click": "Invest Now",
+    "label": "Ready-to-act suggestions",
+    "sec": 4,
+    "phone": "Invest"
+   },
+   {
+    "click": "Paper",
+    "label": "Paper-trade first, risk nothing",
+    "sec": 4
+   },
+   {
+    "click": "Markets",
+    "label": "Indian and US markets",
+    "sec": 4
+   },
+   {
+    "click": "Screener",
+    "label": "A stock screener",
+    "sec": 4,
+    "phone": "Screen"
+   },
+   {
+    "click": "Evidence",
+    "label": "The evidence behind every rule",
+    "sec": 4,
+    "phone": "Proof"
+   },
+   {
+    "click": "Mutual funds",
+    "label": "Mutual funds",
+    "sec": 4,
+    "phone": "Funds"
+   },
+   {
+    "click": "Watchlist",
+    "label": "Your watchlist",
+    "sec": 3.5,
+    "phone": "List"
+   },
+   {
+    "click": "News",
+    "label": "Market news",
+    "sec": 3.5
+   },
+   {
+    "click": "Track record",
+    "label": "An honest track record",
+    "sec": 4.5,
+    "phone": "Record"
+   }
+  ]
  },
  "12": {
   "label": "PROJECT 12/23",
@@ -199,7 +417,34 @@
   "hook": "Turn a one-line idea into a full song",
   "caption": "Genre, tempo, mood, vocals, lyrics",
   "url_text": "music-gen-ai.anchit-tandon.com",
-  "site": "https://music-gen-ai.anchit-tandon.com"
+  "site": "https://music-gen-ai.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Create Music",
+    "label": "Describe the song you want",
+    "sec": 5
+   },
+   {
+    "click": "Dashboard",
+    "label": "Your tracks in one place",
+    "sec": 4
+   },
+   {
+    "click": "Settings",
+    "label": "Tune genre, tempo and mood",
+    "sec": 4
+   },
+   {
+    "click": "Home",
+    "label": "Sonic ideas, transformed",
+    "sec": 3
+   },
+   {
+    "click": "View Gallery",
+    "label": "A gallery of generated music",
+    "sec": 4
+   }
+  ]
  },
  "13": {
   "label": "PROJECT 13/23",
@@ -215,7 +460,49 @@
   "hook": "Gigs, collabs and auditions in one place",
   "caption": "Every request is a Shout",
   "url_text": "shoutout.anchit-tandon.com",
-  "site": "https://shoutout.anchit-tandon.com"
+  "site": "https://shoutout.anchit-tandon.com",
+  "scenes": [
+   {
+    "url": "/artists",
+    "label": "Find artists by city and genre",
+    "sec": 4.5
+   },
+   {
+    "url": "/gigs",
+    "label": "Gigs: enquiry to confirmed date",
+    "sec": 4.5
+   },
+   {
+    "url": "/gigs/log",
+    "label": "Log a gig you already have, free",
+    "sec": 4
+   },
+   {
+    "url": "/gigs/calendar",
+    "label": "A roster calendar",
+    "sec": 4
+   },
+   {
+    "url": "/collabs",
+    "label": "Collabs: post up to six slots",
+    "sec": 4
+   },
+   {
+    "url": "/works/new",
+    "label": "Split sheets signed before release",
+    "sec": 4
+   },
+   {
+    "url": "/organisers",
+    "label": "Organisers see who books",
+    "sec": 4
+   },
+   {
+    "url": "/pricing",
+    "label": "Simple plans",
+    "sec": 3.5
+   }
+  ]
  },
  "15": {
   "label": "PROJECT 15/23",
@@ -223,7 +510,35 @@
   "hook": "An AI techno artist releasing every day",
   "caption": "139 videos, Rs 0 spent",
   "url_text": "anchor.anchit-tandon.com",
-  "site": "https://anchor.anchit-tandon.com"
+  "site": "https://anchor.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Play track",
+    "label": "A new hard-techno track every day",
+    "sec": 4.5,
+    "scroll": false
+   },
+   {
+    "show": "RELEASES",
+    "label": "Every release, dated",
+    "sec": 4.5
+   },
+   {
+    "show": "THE CATALOGUE",
+    "label": "The full catalogue",
+    "sec": 4.5
+   },
+   {
+    "show": "MACHINE ROOM",
+    "label": "The machine room: how it's made",
+    "sec": 5
+   },
+   {
+    "show": "ABOUT ANCHOR",
+    "label": "About ANCHOR",
+    "sec": 3.5
+   }
+  ]
  },
  "16": {
   "label": "PROJECT 16/23",
@@ -231,7 +546,24 @@
   "hook": "Real job openings, tailored resumes",
   "caption": "Never invents experience",
   "url_text": "anchit-tandon.com/jobhunt",
-  "site": "https://anchit-tandon.com/jobhunt"
+  "site": "https://anchit-tandon.com/jobhunt",
+  "scenes": [
+   {
+    "click": "Search jobs →",
+    "fill": {
+     "input[placeholder*='Product Manager']": "Product Manager, AI",
+     "input[placeholder*='Remote']": "Bengaluru"
+    },
+    "label": "Search live jobs by role and city",
+    "sec": 9,
+    "scroll": false
+   },
+   {
+    "show": "Apply",
+    "label": "Matched roles, ready to apply",
+    "sec": 6
+   }
+  ]
  },
  "17": {
   "label": "PROJECT 17/23",
@@ -246,7 +578,49 @@
   "hook": "Home-style food from neighbourhood kitchens",
   "caption": "Subscribe, order or reserve",
   "url_text": "the-passion-table.anchit-tandon.com",
-  "site": "https://the-passion-table.anchit-tandon.com"
+  "site": "https://the-passion-table.anchit-tandon.com",
+  "scenes": [
+   {
+    "url": "/why",
+    "label": "Why home-style food, daily",
+    "sec": 4
+   },
+   {
+    "url": "/menu",
+    "label": "Today's menu",
+    "sec": 4.5
+   },
+   {
+    "url": "/order?tab=subs",
+    "label": "Meal subscriptions",
+    "sec": 4
+   },
+   {
+    "url": "/order",
+    "label": "Order now",
+    "sec": 4
+   },
+   {
+    "url": "/order?tab=dine",
+    "label": "Dine in",
+    "sec": 4
+   },
+   {
+    "url": "/reserve",
+    "label": "Reserve a table",
+    "sec": 4
+   },
+   {
+    "url": "/experience",
+    "label": "Try it",
+    "sec": 4
+   },
+   {
+    "url": "/marketing",
+    "label": "Its marketing engine",
+    "sec": 4
+   }
+  ]
  },
  "19": {
   "label": "PROJECT 19/23",
@@ -254,7 +628,46 @@
   "hook": "Any website, floating in your room no headset",
   "caption": "Pinch, swing, throw it to your TV",
   "url_text": "airpane.anchit-tandon.com",
-  "site": "https://airpane.anchit-tandon.com"
+  "site": "https://airpane.anchit-tandon.com",
+  "scenes": [
+   {
+    "click": "Wikipedia",
+    "label": "Any website, floating in your room",
+    "sec": 6,
+    "scroll": false
+   },
+   {
+    "click": "Live map",
+    "label": "A live map in the air",
+    "sec": 5,
+    "scroll": false,
+    "reset": true
+   },
+   {
+    "click": "three.js",
+    "label": "3D, right in front of you",
+    "sec": 5,
+    "scroll": false,
+    "reset": true
+   },
+   {
+    "click": "YouTube video",
+    "label": "Video on a floating screen",
+    "sec": 5,
+    "scroll": false,
+    "reset": true
+   },
+   {
+    "url": "/desktop/",
+    "label": "Airpane Desktop: control your computer",
+    "sec": 5
+   },
+   {
+    "url": "/catch/",
+    "label": "Catch: a hands-free game",
+    "sec": 4.5
+   }
+  ]
  },
  "20": {
   "label": "PROJECT 20/23",
@@ -270,7 +683,37 @@
   "hook": "A 25-minute film made entirely in code",
   "caption": "A Boat Made of Paper",
   "url_text": "anchit-tandon.com/movies",
-  "site": "https://anchit-tandon.com/movies"
+  "site": "https://anchit-tandon.com/movies",
+  "scenes": [
+   {
+    "click": "Play from start",
+    "label": "Meter Down: a film made in code",
+    "sec": 7,
+    "scroll": false
+   },
+   {
+    "click": "0:52 1997 same corner",
+    "label": "Jump to any chapter",
+    "sec": 5,
+    "scroll": false
+   },
+   {
+    "click": "1:56 2047 Sharma Chai Hub",
+    "label": "Three timelines, one street corner",
+    "sec": 5,
+    "scroll": false
+   },
+   {
+    "show": "Released",
+    "label": "Every released film",
+    "sec": 4.5
+   },
+   {
+    "show": "In production",
+    "label": "What's in production",
+    "sec": 4
+   }
+  ]
  },
  "22": {
   "label": "PROJECT 22/23",
@@ -278,7 +721,30 @@
   "hook": "A teleprompter and camera in one browser tab",
   "caption": "Read, look at the lens, record",
   "url_text": "anchit-tandon.com/teleprompter",
-  "site": "https://anchit-tandon.com/teleprompter"
+  "site": "https://anchit-tandon.com/teleprompter",
+  "scenes": [
+   {
+    "show": "Edit script",
+    "label": "Paste your script",
+    "sec": 4.5
+   },
+   {
+    "show": "Settings for this script",
+    "label": "Speed, size and layout per script",
+    "sec": 5
+   },
+   {
+    "click": "9:16 reel",
+    "label": "Record for reels, posts or YouTube",
+    "sec": 3.5,
+    "scroll": false
+   },
+   {
+    "show": "Takes",
+    "label": "Every take, saved",
+    "sec": 4
+   }
+  ]
  },
  "23": {
   "label": "PROJECT 23/23",
@@ -286,7 +752,40 @@
   "hook": "Don't just read my work. Question it.",
   "caption": "Answers in my own voice",
   "url_text": "anchit-tandon.com",
-  "site": "https://anchit-tandon.com"
+  "site": "https://anchit-tandon.com",
+  "scenes": [
+   {
+    "url": "/#about",
+    "label": "Who I am, in short",
+    "sec": 4
+   },
+   {
+    "url": "/#now",
+    "label": "What I'm building now",
+    "sec": 4
+   },
+   {
+    "url": "/#experience",
+    "label": "Where I've worked",
+    "sec": 4.5
+   },
+   {
+    "url": "/#projects",
+    "label": "23 live products",
+    "sec": 5
+   },
+   {
+    "click": "Chat with me",
+    "label": "Ask me anything: answers in my own voice",
+    "sec": 6,
+    "scroll": false
+   },
+   {
+    "url": "/freelancer",
+    "label": "Hire me for freelance work",
+    "sec": 4.5
+   }
+  ]
  },
  "24": {
   "label": "THE FINALE",
