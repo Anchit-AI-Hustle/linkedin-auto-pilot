@@ -376,5 +376,16 @@ def main():
     return 0
 
 
+class _Tee:
+    """Keeps a copy of everything printed in last-run.log, committed with posted.json, so every run can be read later."""
+    def __init__(self, stream, fh): self.stream, self.fh = stream, fh
+    def write(self, s): self.stream.write(s); self.fh.write(s)
+    def flush(self): self.stream.flush(); self.fh.flush()
+
+
 if __name__ == "__main__":
+    if os.environ.get("GITHUB_ACTIONS"):
+        _log = open(os.path.join(HERE, "last-run.log"), "w", encoding="utf-8")
+        _log.write(f"Run at {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')} UTC\n")
+        sys.stdout = _Tee(sys.stdout, _log); sys.stderr = _Tee(sys.stderr, _log)
     sys.exit(main())
