@@ -107,7 +107,8 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
         ap.QUEUE, ap.STATE, ap.PAUSE = (os.path.join(tmp, "posts.json"), os.path.join(tmp, "posted.json"),
                                         os.path.join(tmp, "PAUSE"))
         ap.call = fake_call
-        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false", ATTACH_VIDEO="false", PREVIEW_CARD="false", REQUIRE_READY="false")
+        prev_auto = ap.AUTO_COMMENT; ap.AUTO_COMMENT = True; self.addCleanup(lambda: setattr(ap, "AUTO_COMMENT", prev_auto))
+        env = dict(LINKEDIN_ACCESS_TOKEN="t", POST_AT="2026-12-01T08:00:00+05:30", DRY_RUN="false", ATTACH_VIDEO="false", PREVIEW_CARD="false", REQUIRE_READY="false", AUTO_COMMENT="true")
         saved = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:
@@ -356,6 +357,7 @@ class Readiness(unittest.TestCase):
     def test_catch_up_comments_only_recent_and_missing(self):
         calls = []
         saved = (ap.add_first_comment, ap.person_urn)
+        saved_auto = ap.AUTO_COMMENT; ap.AUTO_COMMENT = True
         ap.add_first_comment = lambda t, v, urn, a, text: calls.append(urn) or True
         ap.person_urn = lambda t, v: "urn:li:person:a"
         posted = {"3": {"urn": "u3", "at": "2030-01-01T02:00:00+05:30", "commented": True},
@@ -367,7 +369,7 @@ class Readiness(unittest.TestCase):
         try:
             ap.catch_up_comments("t", "v", queue, posted, self_T("2030-01-01T08:00:00+05:30"))
         finally:
-            ap.add_first_comment, ap.person_urn = saved; ap.STATE = saved_state
+            ap.add_first_comment, ap.person_urn = saved; ap.STATE = saved_state; ap.AUTO_COMMENT = saved_auto
         self.assertEqual(calls, ["u4"])
         self.assertTrue(posted["4"]["commented"])
 
