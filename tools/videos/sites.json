@@ -289,29 +289,26 @@
   "site": "https://hey-yaara.anchit-tandon.com",
   "scenes": [
    {
-    "click": "Talk with Yaara",
-    "label": "Talk to Yaara in Hinglish",
-    "sec": 4.5
-   },
-   {
     "click": "Music Hub",
     "label": "A music hub with songs to play",
-    "sec": 4
+    "sec": 5
    },
    {
     "click": "Games Center",
     "label": "Games to keep the mind sharp",
-    "sec": 4
+    "sec": 5
    },
    {
-    "click": "Call History",
-    "label": "Every conversation, saved",
-    "sec": 3.5
+    "click": "Play Now",
+    "label": "Open a game and play",
+    "sec": 5,
+    "scroll": false
    },
    {
     "click": "Home",
     "label": "Namaste, Yaara yahi hai",
-    "sec": 3
+    "sec": 3.5,
+    "reset": true
    }
   ]
  },
@@ -348,8 +345,8 @@
     "sec": 4.5
    },
    {
-    "click": "See today’s 2 suggestions",
-    "label": "Today's suggestions, with the reasons",
+    "click": "See today's trades →",
+    "label": "Today's trades, with the reasons",
     "sec": 5
    },
    {
@@ -591,21 +588,6 @@
     "sec": 4.5
    },
    {
-    "url": "/order?tab=subs",
-    "label": "Meal subscriptions",
-    "sec": 4
-   },
-   {
-    "url": "/order",
-    "label": "Order now",
-    "sec": 4
-   },
-   {
-    "url": "/order?tab=dine",
-    "label": "Dine in",
-    "sec": 4
-   },
-   {
     "url": "/reserve",
     "label": "Reserve a table",
     "sec": 4
@@ -722,29 +704,7 @@
   "caption": "Read, look at the lens, record",
   "url_text": "anchit-tandon.com/teleprompter",
   "site": "https://anchit-tandon.com/teleprompter",
-  "scenes": [
-   {
-    "show": "Edit script",
-    "label": "Paste your script",
-    "sec": 4.5
-   },
-   {
-    "show": "Settings for this script",
-    "label": "Speed, size and layout per script",
-    "sec": 5
-   },
-   {
-    "click": "9:16 reel",
-    "label": "Record for reels, posts or YouTube",
-    "sec": 3.5,
-    "scroll": false
-   },
-   {
-    "show": "Takes",
-    "label": "Every take, saved",
-    "sec": 4
-   }
-  ]
+  "scenes": []
  },
  "23": {
   "label": "PROJECT 23/23",
