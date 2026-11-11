@@ -166,7 +166,7 @@ async def capture(browser, url, spec, actions, frames_dir, want_caps):
             await hold(a.get("hold", 1))
     await ctx.close()
     return n, caps
-def wrap(s, width=26):
+def wrap(s, width=22):   # fits left of the phone frame at every caption size
     s = re.sub(r"\s+", " ", s).strip(); lines = textwrap.wrap(s, width)
     if len(lines) > 2: lines = lines[:2]; lines[1] = lines[1].rstrip(" ,.;:") + "\u2026"
     return "\n".join(lines)
