@@ -19,6 +19,8 @@ def main():
     for p in posts:
         x = {k: p[k] for k in ("day", "date", "title", "post", "first_comment")}
         v = posted.get(str(p["day"]))
+        if v and v.get("skipped"):
+            continue                                   # held back from the series on purpose
         if v:
             x["status"] = "Live"
             if v.get("urn"): x["live"] = "https://www.linkedin.com/feed/update/" + v["urn"] + "/"
