@@ -288,13 +288,15 @@ async def plan_tour(browser, cfg):
     except Exception: pass
     await settle(pg, 1500); await dismiss(pg)
     scenes = [{"kind": "home", "label": cfg.get("caption") or cfg["name"]}]
-    for a in (cfg.get("scenes") or []) + (cfg.get("actions") or []):
+    for a in (cfg.get("actions") or []) + (cfg.get("scenes") or []):   # walkthrough first, then pages/features
         if "click" in a:
             scenes.append({"kind": "click", "target": a["click"], "label": a.get("label", a["click"]), "sec": a.get("sec", a.get("hold", 3)),
-                           "fill": a.get("fill"), "scroll": a.get("scroll", True)})
+                           "fill": a.get("fill"), "scroll": a.get("scroll", True), "phone_target": a.get("phone"), "reset": a.get("reset")})
         elif "url" in a:
             scenes.append({"kind": "url", "target": urljoin(site, a["url"]), "label": a.get("label", a["url"]), "sec": a.get("sec")})
-    seen = {root or "/"}; pages = []
+        elif "show" in a:
+            scenes.append({"kind": "show", "target": a["show"], "label": a.get("label", a["show"]), "sec": a.get("sec", 3.5)})
+    seen = {root or "/"} | {urlparse(x["target"]).path.rstrip("/") or "/" for x in scenes if x["kind"] == "url"}; pages = []
     for l in await pg.evaluate(LINKS_JS):
         u = urlparse(l["h"])
         if u.netloc != base.netloc or SKIP_URL.search(l["h"]) or SKIP_TEXT.match(l["t"] or "x"): continue
@@ -344,18 +346,29 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
         await pg.screenshot(path=f"{frames_dir}/{n:05d}.jpg", type="jpeg", quality=92); n += 1
     for i, sc in enumerate(scenes):
         sec = sc.get("sec") or (per + 1.5 if sc["kind"] == "home" else per)
-        if sc["kind"] in ("home", "url"):
+        if sc["kind"] == "show":                                    # bring a section of the current page into view
+            try:
+                await pg.get_by_text(sc["target"], exact=False).first.scroll_into_view_if_needed(timeout=3000)
+                await pg.evaluate("window.scrollBy(0,-80)"); await pg.wait_for_timeout(300)
+            except Exception: pass
+        elif sc["kind"] in ("home", "url"):
             try: await pg.goto(sc.get("target") or cfg["site"], wait_until="domcontentloaded", timeout=30000)
             except Exception: pass
             await settle(pg, 1000)
             if sc["kind"] == "home": await dismiss(pg)
         else:
+            if sc.get("reset"):                                          # start this feature from the home screen
+                try: await pg.goto(cfg["site"], wait_until="domcontentloaded", timeout=30000)
+                except Exception: pass
+                await settle(pg, 900)
             for sel, text in (sc.get("fill") or {}).items():          # type into a field before the click
                 try:
                     f = pg.locator(sel).first
                     if await f.is_visible(): await f.fill(text)
                 except Exception: pass
             clicked = False
+            target = sc.get("phone_target") if spec["mobile"] and sc.get("phone_target") else sc["target"]
+            sc = dict(sc, target=target)
             for loc in (pg.get_by_role("button", name=sc["target"], exact=True), pg.get_by_role("tab", name=sc["target"]), pg.get_by_role("button", name=sc["target"]),
                         pg.get_by_role("link", name=sc["target"]), pg.get_by_text(sc["target"], exact=False)):
                 try:
@@ -363,7 +376,10 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
                         await loc.first.click(timeout=2500); clicked = True; break
                 except Exception: pass
             if not clicked and spec["mobile"]:                        # phone layouts hide navigation behind a menu
-                for m in (pg.get_by_role("button", name=re.compile("menu|navigation", re.I)), pg.locator("[aria-label*=menu i]")):
+                try: await pg.evaluate("""()=>{const b=[...document.querySelectorAll('button,[role=button]')].find(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.x>=0&&r.y<110&&!(e.innerText||'').trim()&&!/close|back/i.test(e.getAttribute('aria-label')||'')});if(b){b.setAttribute('data-tour-menu','1');return true}return false}""")
+                except Exception: pass
+                for m in (pg.get_by_role("button", name=re.compile("menu|navigation", re.I)), pg.locator("[aria-label*=menu i]"),
+                          pg.locator("[data-tour-menu]")):
                     try:
                         if await m.count():
                             await m.first.click(timeout=1500); await pg.wait_for_timeout(400)
