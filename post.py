@@ -96,7 +96,7 @@ def pick(queue, posted, now, force=False):
             return None
     if not force and (now - start).total_seconds() > CATCH_UP_HOURS * 3600:
         return None
-    for post in sorted(queue, key=lambda p: p["day"]):
+    for post in sorted(queue, key=lambda p: (bool(p.get("defer")), p["day"])):   # deferred posts go last
         if str(post["day"]) not in posted:
             return post
     return None
