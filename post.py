@@ -66,6 +66,9 @@ def guard(post):
 
 
 MIN_GAP_HOURS = float(os.environ.get("MIN_GAP_HOURS", "3"))
+# LinkedIn only lets apps with its Community Management API comment (this app gets 403
+# "partnerApiSocialActions.CREATE"), so first comments are off unless that access is granted.
+AUTO_COMMENT = os.environ.get("AUTO_COMMENT", "false").lower() == "true"
 SLOT_HOURS_IST = (2, 8, 14, 20)          # 2 AM, 8 AM, 2 PM, 8 PM IST
 CATCH_UP_HOURS = float(os.environ.get("CATCH_UP_HOURS", "4"))
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
@@ -285,6 +288,8 @@ def person_urn(token, version):
 
 def catch_up_comments(token, version, queue, posted, now):
     """Add the first comment to any post from the last 24 hours that is missing it."""
+    if not AUTO_COMMENT:
+        return
     texts = {str(p["day"]): p.get("first_comment", "") for p in queue}
     todo = [d for d, v in posted.items() if v.get("urn") and not v.get("commented") and v.get("at")
             and (now - datetime.datetime.fromisoformat(v["at"])).total_seconds() < 24 * 3600]
@@ -370,7 +375,7 @@ def main():
     posted[str(post["day"])] = {"date": date_str, "at": now.isoformat(timespec="seconds"), "title": post["title"], "urn": urn}
     json.dump(posted, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     print(f"Published Day {post['day']} (HTTP {status}) {urn}")
-    if add_first_comment(token, version, urn, author, post.get("first_comment", "")):
+    if AUTO_COMMENT and add_first_comment(token, version, urn, author, post.get("first_comment", "")):
         posted[str(post["day"])]["commented"] = True
         json.dump(posted, open(STATE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     return 0
