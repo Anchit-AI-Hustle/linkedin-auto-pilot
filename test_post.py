@@ -375,5 +375,18 @@ class Readiness(unittest.TestCase):
 def self_T(s):
     return datetime.datetime.fromisoformat(s)
 
+
+class Defer(unittest.TestCase):
+    def test_deferred_posts_go_after_everything_else(self):
+        q = [{"day": d, "post": "x", "defer": d in (7, 10)} for d in range(6, 12)]
+        done = {"6": {"at": "2030-01-01T02:05:00+05:30"}}
+        order = []
+        for slot in ("08", "14", "20"):
+            p = ap.pick(q, done, datetime.datetime.fromisoformat(f"2030-01-01T{slot}:20:00+05:30"))
+            order.append(p["day"]); done[str(p["day"])] = {"at": f"2030-01-01T{slot}:20:00+05:30"}
+        self.assertEqual(order, [8, 9, 11])
+        p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-02T02:20:00+05:30"))
+        self.assertEqual(p["day"], 7)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
