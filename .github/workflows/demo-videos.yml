@@ -12,11 +12,15 @@ on:
       days:
         description: "Which posts to render, as a JSON list (default: all), e.g. [8, 11, 18]"
         default: "all"
+      from_run:
+        description: "Also publish the web copies from this earlier run id (optional)"
+        default: ""
   schedule:
     - cron: "50 2,8,14,20 * * *"
 
 permissions:
   contents: write
+  actions: read
 
 concurrency: demo-videos
 
@@ -36,7 +40,7 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -73,13 +77,30 @@ jobs:
 
   publish:
     needs: render
-    if: ${{ always() && needs.render.result != 'failure' }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main          # the newest main, not the commit this run started from
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Collect web copies from an earlier run
+        if: github.event_name == 'workflow_dispatch' && inputs.from_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          pattern: web-*
+          merge-multiple: true
+          path: linkedin-auto-pilot/videos-earlier
+          run-id: ${{ inputs.from_run }}
+          github-token: ${{ github.token }}
+      - name: Put the earlier run's copies in place
+        if: github.event_name == 'workflow_dispatch' && inputs.from_run != ''
+        run: |
+          mkdir -p linkedin-auto-pilot/videos
+          cp -f linkedin-auto-pilot/videos-earlier/* linkedin-auto-pilot/videos/ 2>/dev/null || true
+          rm -rf linkedin-auto-pilot/videos-earlier
       - name: Collect the web copies
         if: github.event_name == 'workflow_dispatch'
         uses: actions/download-artifact@v4
@@ -96,5 +117,9 @@ jobs:
           git add linkedin-auto-pilot
           git diff --cached --quiet && exit 0
           git commit -m "Series page: refresh videos and live links"
-          git pull --rebase -q origin main
-          git push
+          for i in 1 2 3 4 5; do
+            git pull --rebase -X theirs -q origin main && git push && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 10))
+          done
+          exit 1
