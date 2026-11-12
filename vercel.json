@@ -1,5 +1,1 @@
-{
-  "functions": {
-    "api/*.py": { "includeFiles": "{post.py,review.py,adapters.py,live.py}", "maxDuration": 60 }
-  }
-}
+{ "functions": { "api/*.py": { "includeFiles": "{post.py,review.py,adapters.py,live.py}", "excludeFiles": "{linkedin-auto-pilot/**,tools/**,.github/**,test_*.py,*.md}", "maxDuration": 60 } } }
