@@ -14,4 +14,8 @@ jobs:
           TICK_URL: ${{ secrets.REVIEW_TICK_URL }}
           TICK_SECRET: ${{ secrets.TICK_SECRET }}
         run: |
+          if [ -z "$TICK_URL" ] || [ -z "$TICK_SECRET" ]; then
+            echo "::notice::WhatsApp review is not set up (REVIEW_TICK_URL or TICK_SECRET is missing), so there is nothing to tick."
+            exit 0
+          fi
           curl -fsS -X POST "$TICK_URL" -H "Authorization: Bearer $TICK_SECRET"
