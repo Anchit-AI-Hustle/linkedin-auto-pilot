@@ -13,7 +13,7 @@ def main():
     posts = json.load(open(os.path.join(ROOT, "posts.json"), encoding="utf-8"))
     posted = json.load(open(os.path.join(ROOT, "posted.json"), encoding="utf-8"))
     last = max([datetime.datetime.fromisoformat(v["at"]) for v in posted.values() if v.get("at")] or [datetime.datetime.now(IST)])
-    pending = [p for p in posts if str(p["day"]) not in posted]
+    pending = sorted([p for p in posts if str(p["day"]) not in posted], key=lambda p: (not p.get("priority"), bool(p.get("defer")), p["day"]))   # same order as post.py
     when = dict(zip([p["day"] for p in pending], next_slots(max(last, datetime.datetime.now(IST)), len(pending))))
     data = []
     for p in posts:

@@ -82,7 +82,7 @@ def slot_start(now):
     return base.replace(hour=h) if h >= 0 else (base - datetime.timedelta(days=1)).replace(hour=h + 24)
 
 
-def pick(queue, posted, now, force=False):
+def pick(queue, posted, now, force=False, ready=None):
     """The next unposted post, or None.
 
     The workflow runs every hour, so a dropped or delayed GitHub schedule is retried
@@ -99,10 +99,12 @@ def pick(queue, posted, now, force=False):
             return None
     if not force and (now - start).total_seconds() > CATCH_UP_HOURS * 3600:
         return None
-    for post in sorted(queue, key=lambda p: (bool(p.get("defer")), p["day"])):   # deferred posts go last
-        if str(post["day"]) not in posted:
+    waiting = [post for post in sorted(queue, key=lambda p: (not p.get("priority"), bool(p.get("defer")), p["day"]))   # priority first, deferred last
+               if str(post["day"]) not in posted]
+    for post in waiting:                      # a post still waiting for its video never stalls the ones behind it
+        if ready is None or ready(post):
             return post
-    return None
+    return waiting[0] if waiting else None
 
 
 def call(method, path, token, version, body=None):
@@ -172,6 +174,12 @@ def video_for(day):
         except Exception as err:
             print(f"2160p master not available ({err}); using the web copy.")
     return web
+
+
+def has_reviewed_video(day):
+    """True when this post's demo video is rendered and marked as a reviewed full tour."""
+    found = [f for f in glob.glob(os.path.join(VIDEOS, f"demo-{int(day):02d}-*.mp4")) if not f.endswith("-2160p.mp4")]
+    return any(os.path.basename(f) in verified_videos() for f in found)
 
 
 def verified_videos():
@@ -323,7 +331,9 @@ def main():
     posted = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
     if not dry and token:
         catch_up_comments(token, version, queue, posted, now)
-    post = pick(queue, posted, now, force=os.environ.get("FORCE", "false").lower() == "true")
+    gate = (os.environ.get("REQUIRE_READY", "true").lower() != "false" and os.environ.get("ATTACH_VIDEO", "true").lower() != "false")
+    post = pick(queue, posted, now, force=os.environ.get("FORCE", "false").lower() == "true",
+                ready=(lambda p: has_reviewed_video(p["day"])) if gate else None)
     if post is None:
         print(f"Nothing to post at {now.isoformat(timespec='minutes')}: this slot (from {slot_start(now):%-I %p} IST) already has its post, its {CATCH_UP_HOURS:g}-hour window has passed, or the series is finished.")
         return 0

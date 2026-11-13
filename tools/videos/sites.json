@@ -283,7 +283,7 @@
  "8": {
   "label": "PROJECT 8/23",
   "name": "Hey Yaara",
-  "hook": "A Hinglish AI companion you can call like a friend",
+  "hook": "A Hinglish AI voice companion for the elderly",
   "caption": "The call never goes quiet",
   "url_text": "hey-yaara.anchit-tandon.com",
   "site": "https://hey-yaara.anchit-tandon.com",
@@ -300,7 +300,7 @@
    },
    {
     "click": "Play Now",
-    "label": "Open a game and play",
+    "label": "Pick a game and start",
     "sec": 5,
     "scroll": false
    },
@@ -753,5 +753,65 @@
   "hook": "How these 23 posts were published",
   "caption": "Automation that keeps your voice",
   "url_text": "anchit-tandon.com"
+ },
+ "25": {
+  "label": "BONUS BUILD",
+  "name": "Find a Flatmate",
+  "hook": "From idea to live MVP in 6 to 7 hours",
+  "caption": "Find someone you can actually live with",
+  "url_text": "find-a-flatmate.anchit-tandon.com",
+  "site": "https://find-a-flatmate.anchit-tandon.com",
+  "scenes": [
+   {
+    "show": "Real fit",
+    "label": "Real fit, full cost, safer by design",
+    "sec": 4.5
+   },
+   {
+    "url": "/how-it-works",
+    "label": "Seven steps, from discover to move in",
+    "sec": 6
+   },
+   {
+    "url": "/try",
+    "label": "Try matching with sample profiles",
+    "sec": 6
+   },
+   {
+    "url": "/try?city=noida",
+    "label": "Gurugram and Noida to start",
+    "sec": 4.5
+   },
+   {
+    "url": "/city/gurugram",
+    "label": "Only real, reviewed rooms",
+    "sec": 4
+   },
+   {
+    "url": "/safety",
+    "label": "Visit, verify, then decide",
+    "sec": 5.5
+   },
+   {
+    "url": "/pricing",
+    "label": "Free while it is an MVP",
+    "sec": 4.5
+   },
+   {
+    "url": "/onboarding/intent",
+    "label": "Find a room or fill a room",
+    "sec": 3.5
+   },
+   {
+    "url": "/get",
+    "label": "Android and iPhone apps too",
+    "sec": 4
+   },
+   {
+    "url": "/about",
+    "label": "Fixed rules you can read, no AI",
+    "sec": 5
+   }
+  ]
  }
 }

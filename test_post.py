@@ -36,7 +36,7 @@ class Guard(unittest.TestCase):
     def test_every_queued_post_passes(self):
         with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
             queue = json.load(fh)
-        self.assertEqual(len(queue), 25)
+        self.assertEqual(len(queue), 26)
         for p in queue:
             self.assertEqual(ap.guard(p), [], f"Day {p['day']} failed the guard")
 
@@ -126,8 +126,10 @@ class LivePathWithFakeLinkedIn(unittest.TestCase):
             self.assertEqual(body["lifecycleState"], "PUBLISHED")
             self.assertIn("{hashtag|\\#|BuildInPublic}", body["commentary"])
             state = json.load(open(ap.STATE))
-            self.assertEqual(state["0"]["urn"], "urn:li:share:999")
-            self.assertTrue(state["0"].get("commented"))
+            self.assertEqual(len(state), 1)
+            first = next(iter(state.values()))
+            self.assertEqual(first["urn"], "urn:li:share:999")
+            self.assertTrue(first.get("commented"))
             n = len(calls)
             ap.main()  # a second run in the same slot must not post again
             self.assertEqual(len(calls), n)
@@ -345,7 +347,7 @@ class Readiness(unittest.TestCase):
     def test_holds_when_video_not_reviewed(self):
         r, posted = self.run_live(verified=False)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Holding Day 0", r.stdout)
+        self.assertIn("Holding Day", r.stdout)
         self.assertEqual(posted, {})
 
     def test_reviewed_video_proceeds_to_publishing(self):
@@ -389,6 +391,54 @@ class Defer(unittest.TestCase):
         self.assertEqual(order, [8, 9, 11])
         p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-02T02:20:00+05:30"))
         self.assertEqual(p["day"], 7)
+
+
+class NotBlocked(unittest.TestCase):
+    """One post waiting for its video must never stall the posts behind it."""
+    def test_a_post_without_a_reviewed_video_is_passed_over(self):
+        q = [{"day": d, "post": "x"} for d in range(14, 18)]
+        ready = lambda p: p["day"] in (15, 17)
+        now = datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30")
+        self.assertEqual(ap.pick(q, {}, now, ready=ready)["day"], 15)
+        done = {"15": {"at": "2030-01-01T08:20:00+05:30"}}
+        later = datetime.datetime.fromisoformat("2030-01-01T14:20:00+05:30")
+        self.assertEqual(ap.pick(q, done, later, ready=ready)["day"], 17)
+        self.assertEqual(ap.pick(q, done, later, ready=lambda p: True)["day"], 14)   # goes out as soon as it is ready
+
+    def test_when_nothing_is_ready_the_next_post_is_named_so_the_run_can_say_why(self):
+        q = [{"day": d, "post": "x"} for d in range(14, 16)]
+        now = datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30")
+        self.assertEqual(ap.pick(q, {}, now, ready=lambda p: False)["day"], 14)
+
+
+class Priority(unittest.TestCase):
+    def test_a_priority_post_goes_out_in_the_very_next_slot(self):
+        q = [{"day": d, "post": "x", "defer": d == 7} for d in range(6, 12)] + [{"day": 25, "post": "x", "priority": True}]
+        done = {"6": {"at": "2030-01-01T02:05:00+05:30"}}
+        p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30"))
+        self.assertEqual(p["day"], 25)
+        done["25"] = {"at": "2030-01-01T08:20:00+05:30"}
+        p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-01T14:20:00+05:30"))
+        self.assertEqual(p["day"], 8)                              # then the series carries on in order
+
+    def test_the_bonus_post_is_queued_first_and_passes_the_guard(self):
+        with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
+            queue = json.load(fh)
+        with open(os.path.join(HERE, "posted.json"), encoding="utf-8") as fh:
+            posted = json.load(fh)
+        bonus = [p for p in queue if p["title"] == "Find a Flatmate"]
+        self.assertEqual(len(bonus), 1)
+        self.assertEqual(ap.guard(bonus[0]), [])
+        self.assertIn("6 to 7 hours", bonus[0]["post"])
+        self.assertEqual(ap.site_url(bonus[0]), "https://find-a-flatmate.anchit-tandon.com")
+        self.assertEqual(bonus[0]["post"].count("#"), 5)
+        if str(bonus[0]["day"]) not in posted:
+            nxt = ap.pick(queue, {k: v for k, v in posted.items() if not v.get("at")}, datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30"))
+            self.assertEqual(nxt["title"], "Find a Flatmate")
+
+    def test_books_on_amazon_stays_out(self):
+        with open(os.path.join(HERE, "posted.json"), encoding="utf-8") as fh:
+            self.assertTrue(json.load(fh)["17"].get("skipped"))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
