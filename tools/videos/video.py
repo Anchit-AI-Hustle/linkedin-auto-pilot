@@ -305,7 +305,7 @@ async def plan_tour(browser, cfg):
         if root and not u.path.startswith(root): continue
         frag = u.fragment if u.fragment.startswith("/") else ""
         key = (u.path.rstrip("/") or "/") + ("#" + frag if frag else "")
-        if key in seen: continue
+        if key in seen or any(x in key for x in cfg.get("skip", [])): continue   # "skip": pages that only show a sign-in
         seen.add(key); pages.append((f"{u.scheme}://{u.netloc}{key}", l["t"]))
     extra = [(urljoin(site, x), "") for x in cfg.get("pages", [])]
     for url, label in (extra + pages)[: int(os.environ.get("MAX_PAGES", "40"))]:

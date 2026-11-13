@@ -66,7 +66,9 @@ class Schedule(unittest.TestCase):
     def test_missed_schedule_is_caught_up_within_the_slot(self):
         done = {"0": {"at": "2026-12-01T08:30:00+05:30"}}
         self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T15:17:00+05:30"))["day"], 1)   # 2 PM slot, 77 min late
-        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T18:30:00+05:30")))          # window passed
+        self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T19:40:00+05:30"))["day"], 1)   # a run this late in the slot still posts
+        old = ap.CATCH_UP_HOURS; ap.CATCH_UP_HOURS = 4; self.addCleanup(lambda: setattr(ap, "CATCH_UP_HOURS", old))
+        self.assertIsNone(ap.pick(self.queue, done, self.T("2026-12-01T18:30:00+05:30")))          # a shorter window, when set, is respected
         self.assertEqual(ap.pick(self.queue, done, self.T("2026-12-01T18:30:00+05:30"), force=True)["day"], 1)
 
     def test_hourly_runs_never_double_post(self):

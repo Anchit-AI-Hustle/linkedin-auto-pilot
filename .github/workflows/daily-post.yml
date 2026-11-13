@@ -1,12 +1,12 @@
 name: LinkedIn post every 6 hours
 
 # Posts the next approved post in each slot: 2 AM, 8 AM, 2 PM and 8 PM IST.
-# GitHub can drop or delay scheduled runs, so this runs every hour (at :17, away from
-# the busy top of the hour) and post.py posts at most once per slot, catching up to
-# 4 hours late. Running it by hand posts the next post now.
+# GitHub often drops or delays scheduled runs, so this asks for a run three times an hour
+# (away from the busy top of the hour). post.py posts at most once per slot, so any one
+# run that fires inside a slot is enough. Running it by hand posts the next post now.
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "7,27,47 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:

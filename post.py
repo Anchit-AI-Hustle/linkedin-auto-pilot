@@ -70,7 +70,7 @@ MIN_GAP_HOURS = float(os.environ.get("MIN_GAP_HOURS", "3"))
 # "partnerApiSocialActions.CREATE"), so first comments are off unless that access is granted.
 AUTO_COMMENT = os.environ.get("AUTO_COMMENT", "false").lower() == "true"
 SLOT_HOURS_IST = (2, 8, 14, 20)          # 2 AM, 8 AM, 2 PM, 8 PM IST
-CATCH_UP_HOURS = float(os.environ.get("CATCH_UP_HOURS", "4"))
+CATCH_UP_HOURS = float(os.environ.get("CATCH_UP_HOURS", "6"))   # the whole slot: any run that fires in a slot posts
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
 

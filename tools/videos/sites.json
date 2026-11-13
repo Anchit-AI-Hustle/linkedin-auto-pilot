@@ -578,30 +578,47 @@
   "site": "https://the-passion-table.anchit-tandon.com",
   "scenes": [
    {
+    "show": "Every reason dinner is still a problem",
+    "label": "Why dinner is still a daily problem",
+    "sec": 4.5
+   },
+   {
+    "show": "How it works",
+    "label": "How it works",
+    "sec": 4.5
+   },
+   {
+    "show": "Plans",
+    "label": "Plans for every household",
+    "sec": 4.5
+   },
+   {
     "url": "/why",
     "label": "Why home-style food, daily",
-    "sec": 4
+    "sec": 5
    },
    {
     "url": "/menu",
     "label": "Today's menu",
-    "sec": 4.5
+    "sec": 5.5
    },
    {
     "url": "/reserve",
-    "label": "Reserve a table",
-    "sec": 4
+    "label": "Reserve a table at an Eating Joint",
+    "sec": 4.5
    },
    {
-    "url": "/experience",
-    "label": "Try it",
-    "sec": 4
-   },
-   {
-    "url": "/marketing",
-    "label": "Its marketing engine",
+    "url": "/careers",
+    "label": "Work with a neighbourhood kitchen",
     "sec": 4
    }
+  ],
+  "skip": [
+   "/experience",
+   "/marketing",
+   "/joint",
+   "/order",
+   "/home"
   ]
  },
  "19": {
@@ -752,7 +769,25 @@
   "name": "The Workflow",
   "hook": "How these 23 posts were published",
   "caption": "Automation that keeps your voice",
-  "url_text": "anchit-tandon.com"
+  "url_text": "anchit-tandon.com/linkedin-auto-pilot",
+  "site": "https://anchit-tandon.com/linkedin-auto-pilot",
+  "scenes": [
+   {
+    "show": "LifeCycle-OS",
+    "label": "Every post, with its demo video",
+    "sec": 5
+   },
+   {
+    "show": "Hey Yaara",
+    "label": "Posted on a fixed schedule",
+    "sec": 5
+   },
+   {
+    "show": "The workflow behind the series",
+    "label": "One queue, checked before it posts",
+    "sec": 5
+   }
+  ]
  },
  "25": {
   "label": "BONUS BUILD",
