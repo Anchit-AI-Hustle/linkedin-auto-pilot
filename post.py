@@ -107,25 +107,44 @@ def pick(queue, posted, now, force=False, ready=None):
     return waiting[0] if waiting else None
 
 
+RETRY_WAITS = (5, 15, 45)          # seconds between attempts on a passing LinkedIn hiccup
+
+
+def creates_content(method, path):
+    """POSTs that publish something visible. A 5xx or timeout may still have published it,
+    so these are retried only when LinkedIn says it did nothing (429 rate limit)."""
+    return method == "POST" and (path == "/rest/posts" or path.endswith("/comments"))
+
+
 def call(method, path, token, version, body=None):
-    req = urllib.request.Request(API + path, method=method)
-    req.add_header("Authorization", "Bearer " + token)
-    req.add_header("LinkedIn-Version", version)
-    req.add_header("X-Restli-Protocol-Version", "2.0.0")
-    data = None
-    if body is not None:
-        req.add_header("Content-Type", "application/json")
-        data = json.dumps(body).encode("utf-8")
-    try:
-        with urllib.request.urlopen(req, data=data, timeout=30) as resp:
-            raw = resp.read().decode("utf-8") or "{}"
-            return resp.status, dict(resp.headers), json.loads(raw)
-    except urllib.error.HTTPError as err:
-        detail = err.read().decode("utf-8", "replace")[:500]
-        if err.code == 401:
-            raise SystemExit("LinkedIn rejected the token (401). Tokens last 60 days: "
-                             "generate a new one and update the LINKEDIN_ACCESS_TOKEN secret.")
-        raise SystemExit(f"LinkedIn API error {err.code}: {detail}")
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    safe_to_repeat = not creates_content(method, path)
+    for attempt in range(len(RETRY_WAITS) + 1):
+        req = urllib.request.Request(API + path, method=method)
+        req.add_header("Authorization", "Bearer " + token)
+        req.add_header("LinkedIn-Version", version)
+        req.add_header("X-Restli-Protocol-Version", "2.0.0")
+        if data is not None:
+            req.add_header("Content-Type", "application/json")
+        last = attempt == len(RETRY_WAITS)
+        try:
+            with urllib.request.urlopen(req, data=data, timeout=30) as resp:
+                raw = resp.read().decode("utf-8") or "{}"
+                return resp.status, dict(resp.headers), json.loads(raw)
+        except urllib.error.HTTPError as err:
+            detail = err.read().decode("utf-8", "replace")[:500]
+            if err.code == 401:
+                raise SystemExit("LinkedIn rejected the token (401). Tokens last 60 days: "
+                                 "generate a new one and update the LINKEDIN_ACCESS_TOKEN secret.")
+            transient = err.code == 429 or (err.code >= 500 and safe_to_repeat)
+            if last or not transient:
+                raise SystemExit(f"LinkedIn API error {err.code}: {detail}")
+            print(f"LinkedIn {err.code} on {method} {path}; retrying in {RETRY_WAITS[attempt]}s.")
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as err:
+            if last or not safe_to_repeat:
+                raise SystemExit(f"LinkedIn API unreachable on {method} {path}: {err}")
+            print(f"LinkedIn unreachable on {method} {path} ({err}); retrying in {RETRY_WAITS[attempt]}s.")
+        time.sleep(RETRY_WAITS[attempt])
 
 
 def comment_request(post_urn, author, text):
@@ -250,11 +269,23 @@ def article_content(token, version, author, post):
 
 
 def put_bytes(url, data, token, content_type="application/octet-stream"):
-    req = urllib.request.Request(url, data=data, method="PUT")
-    req.add_header("Authorization", "Bearer " + token)
-    req.add_header("Content-Type", content_type)
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return resp.headers.get("ETag", "").strip()
+    """Upload one part. A PUT of the same bytes is safe to repeat, so passing errors are retried."""
+    for attempt in range(len(RETRY_WAITS) + 1):
+        req = urllib.request.Request(url, data=data, method="PUT")
+        req.add_header("Authorization", "Bearer " + token)
+        req.add_header("Content-Type", content_type)
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return resp.headers.get("ETag", "").strip()
+        except urllib.error.HTTPError as err:
+            if attempt == len(RETRY_WAITS) or not (err.code == 429 or err.code >= 500):
+                raise
+            print(f"Upload part got {err.code}; retrying in {RETRY_WAITS[attempt]}s.")
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as err:
+            if attempt == len(RETRY_WAITS):
+                raise
+            print(f"Upload part failed ({err}); retrying in {RETRY_WAITS[attempt]}s.")
+        time.sleep(RETRY_WAITS[attempt])
 
 
 def upload_video(token, version, author, path, poster=None, wait_seconds=300):
