@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency: linkedin-post
 
@@ -60,3 +61,17 @@ jobs:
           git add PAUSE posted.json && git commit -qm "Pause: posted.json save failed" || true
           git pull --rebase -q origin main && git push || true
           exit 1
+      - name: Alert on failure
+        # Opens an issue so a failed slot never goes unnoticed.
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Posting run failed"
+          body=$(printf 'Run: %s\n\nLast lines of last-run.log:\n\n```\n%s\n```\n' "$RUN_URL" "$(tail -n 25 last-run.log 2>/dev/null || echo 'no log')")
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number' 2>/dev/null || true)
+          # One alert per outage: while that issue is open, later failed runs stay quiet. Close it once fixed.
+          if [ -z "$num" ]; then
+            gh issue create --title "$title" --body "$body" || true
+          fi

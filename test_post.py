@@ -442,5 +442,85 @@ class Priority(unittest.TestCase):
         with open(os.path.join(HERE, "posted.json"), encoding="utf-8") as fh:
             self.assertTrue(json.load(fh)["17"].get("skipped"))
 
+class RetryTests(unittest.TestCase):
+    """Passing LinkedIn errors are retried, but publishing is never repeated when it may have gone out."""
+
+    class _Resp:
+        status, headers = 200, {"ETag": "e1"}
+        def __init__(self, body=b'{"ok": 1}'): self.body = body
+        def read(self): return self.body
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def setUp(self):
+        self.saved = (ap.urllib.request.urlopen, ap.time.sleep)
+        ap.time.sleep = lambda s: None
+        self.attempts = 0
+
+    def tearDown(self):
+        ap.urllib.request.urlopen, ap.time.sleep = self.saved
+
+    def _fail_then_ok(self, failures, exc_factory):
+        def fake(req, data=None, timeout=None):
+            self.attempts += 1
+            if self.attempts <= failures:
+                raise exc_factory()
+            return self._Resp()
+        ap.urllib.request.urlopen = fake
+
+    @staticmethod
+    def _http(code):
+        import io
+        return lambda: ap.urllib.error.HTTPError("u", code, "x", {}, io.BytesIO(b"err"))
+
+    def test_get_retries_5xx_then_succeeds(self):
+        self._fail_then_ok(2, self._http(503))
+        status, _, body = ap.call("GET", "/v2/userinfo", "t", "202605")
+        self.assertEqual((status, body, self.attempts), (200, {"ok": 1}, 3))
+
+    def test_get_retries_network_errors(self):
+        self._fail_then_ok(1, lambda: ap.urllib.error.URLError("reset"))
+        ap.call("GET", "/rest/videos/x", "t", "202605")
+        self.assertEqual(self.attempts, 2)
+
+    def test_gives_up_after_all_retries(self):
+        self._fail_then_ok(99, self._http(502))
+        with self.assertRaises(SystemExit):
+            ap.call("GET", "/v2/userinfo", "t", "202605")
+        self.assertEqual(self.attempts, len(ap.RETRY_WAITS) + 1)
+
+    def test_publish_is_not_repeated_after_5xx_or_timeout(self):
+        for exc in (self._http(500), lambda: ap.urllib.error.URLError("timed out"), lambda: TimeoutError()):
+            self.attempts = 0
+            self._fail_then_ok(1, exc)
+            with self.assertRaises(SystemExit):
+                ap.call("POST", "/rest/posts", "t", "202605", {"a": 1})
+            self.assertEqual(self.attempts, 1)
+
+    def test_publish_retries_on_rate_limit_only(self):
+        self._fail_then_ok(1, self._http(429))
+        ap.call("POST", "/rest/posts", "t", "202605", {"a": 1})
+        self.assertEqual(self.attempts, 2)
+
+    def test_comment_not_repeated_after_5xx(self):
+        self._fail_then_ok(1, self._http(500))
+        with self.assertRaises(SystemExit):
+            ap.call("POST", "/rest/socialActions/x/comments", "t", "202605", {"a": 1})
+        self.assertEqual(self.attempts, 1)
+
+    def test_client_errors_and_401_fail_fast(self):
+        for code in (400, 401, 403):
+            self.attempts = 0
+            self._fail_then_ok(1, self._http(code))
+            with self.assertRaises(SystemExit):
+                ap.call("GET", "/v2/userinfo", "t", "202605")
+            self.assertEqual(self.attempts, 1)
+
+    def test_upload_part_retries(self):
+        self._fail_then_ok(2, self._http(503))
+        self.assertEqual(ap.put_bytes("https://up", b"x", "t"), "e1")
+        self.assertEqual(self.attempts, 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
