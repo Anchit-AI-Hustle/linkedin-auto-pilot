@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run tests
-        run: python -W ignore test_post.py
+        run: python -W ignore -m unittest discover -v
       - name: Check the LinkedIn token works
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}

@@ -78,6 +78,19 @@ class GitHub(unittest.TestCase):
     def test_missing_state_returns_none(self):
         self.assertIsNone(ad.GitHubStore(ENV, Recorder([(404, {})])).state())
 
+    def test_mark_posted_preserves_history_and_records_review_publication_time(self):
+        old = {"17": {"skipped": True, "note": "Do not publish"}}
+        queue = [{"day": 7, "post": "old wording"}]
+        def response(obj):
+            return (200, {"sha": "abc", "content": base64.b64encode(json.dumps(obj).encode()).decode()})
+        h = Recorder([response(old), (200, {"content": {"sha": "new"}}),
+                      response(queue), (200, {"content": {"sha": "new"}})])
+        ad.GitHubStore(ENV, h).mark_posted(7, "TeleSuite", "approved", "urn:li:share:test", "2030-01-01", at="2030-01-01T09:00:00+05:30")
+        state = json.loads(base64.b64decode(h.calls[1][3]["content"]))
+        self.assertEqual(state["17"], old["17"])
+        self.assertEqual(state["7"]["at"], "2030-01-01T09:00:00+05:30")
+        self.assertEqual(state["7"]["urn"], "urn:li:share:test")
+
     def test_pause_detection(self):
         self.assertTrue(ad.GitHubStore(ENV, Recorder([(200, {})])).paused())
         self.assertFalse(ad.GitHubStore(ENV, Recorder([(404, {})])).paused())

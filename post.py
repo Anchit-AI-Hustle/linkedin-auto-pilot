@@ -1,6 +1,6 @@
 """LinkedIn auto-pilot: publishes the next approved post from posts.json, one every 6 hours.
 
-Publish-only by design: it creates one post per day on the author's own profile
+Publish-only by design: it creates posts on the author's own profile
 through LinkedIn's official Posts API. It never likes, comments on other
 people's posts, messages or connects.
 
@@ -9,14 +9,14 @@ Environment:
   LINKEDIN_VERSION       API version header, YYYYMM (default 202605)
   DRY_RUN                "true" prints what would be posted and changes nothing
   POST_AT                optional ISO time override (default: now in IST)
-  MIN_GAP_HOURS          minimum hours between posts (default 5)
+  MIN_GAP_HOURS          minimum hours between posts (default 3)
 
 Usage:
-  python post.py           publish the next post, if none has gone out today
+  python post.py           publish the next post, at most once per six-hour slot
   python post.py --check   only confirm the token works, post nothing
 
 The series starts when the PAUSE file is removed (the "Start posting" workflow
-does this) and then publishes the next unposted day, one per day, in order.
+does this) and then publishes the earliest unposted day, in numeric order.
 """
 import datetime
 import glob
@@ -82,7 +82,19 @@ def slot_start(now):
     return base.replace(hour=h) if h >= 0 else (base - datetime.timedelta(days=1)).replace(hour=h + 24)
 
 
-def pick(queue, posted, now, force=False, ready=None):
+def pending_posts(queue, posted):
+    """Unposted days in numeric order. Only posted.json can explicitly skip a day.
+
+    Legacy priority/defer flags and media readiness never change this order.
+    Reject ambiguous day identifiers before either publishing path can use them.
+    """
+    days = [p["day"] for p in queue]
+    if any(type(day) is not int or day < 0 for day in days) or len(set(days)) != len(days):
+        raise ValueError("Queue days must be unique non-negative integers")
+    return [p for p in sorted(queue, key=lambda p: p["day"]) if str(p["day"]) not in posted]
+
+
+def pick(queue, posted, now, force=False):
     """The next unposted post, or None.
 
     The workflow runs every hour, so a dropped or delayed GitHub schedule is retried
@@ -99,11 +111,7 @@ def pick(queue, posted, now, force=False, ready=None):
             return None
     if not force and (now - start).total_seconds() > CATCH_UP_HOURS * 3600:
         return None
-    waiting = [post for post in sorted(queue, key=lambda p: (not p.get("priority"), bool(p.get("defer")), p["day"]))   # priority first, deferred last
-               if str(post["day"]) not in posted]
-    for post in waiting:                      # a post still waiting for its video never stalls the ones behind it
-        if ready is None or ready(post):
-            return post
+    waiting = pending_posts(queue, posted)
     return waiting[0] if waiting else None
 
 
@@ -362,9 +370,7 @@ def main():
     posted = json.load(open(STATE, encoding="utf-8")) if os.path.exists(STATE) else {}
     if not dry and token:
         catch_up_comments(token, version, queue, posted, now)
-    gate = (os.environ.get("REQUIRE_READY", "true").lower() != "false" and os.environ.get("ATTACH_VIDEO", "true").lower() != "false")
-    post = pick(queue, posted, now, force=os.environ.get("FORCE", "false").lower() == "true",
-                ready=(lambda p: has_reviewed_video(p["day"])) if gate else None)
+    post = pick(queue, posted, now, force=os.environ.get("FORCE", "false").lower() == "true")
     if post is None:
         print(f"Nothing to post at {now.isoformat(timespec='minutes')}: this slot (from {slot_start(now):%-I %p} IST) already has its post, its {CATCH_UP_HOURS:g}-hour window has passed, or the series is finished.")
         return 0
@@ -378,18 +384,17 @@ def main():
     if not dry and not token:
         raise SystemExit("LINKEDIN_ACCESS_TOKEN is missing, so nothing was posted. Add it under Settings, Secrets and variables, Actions.")
     require_ready = os.environ.get("REQUIRE_READY", "true").lower() != "false"
-    clip = video_for(post["day"]) if os.environ.get("ATTACH_VIDEO", "true").lower() != "false" else None
-    if require_ready and not clip and not dry:
-        msg = (f"Holding Day {post['day']} ({post['title']}): its demo video is not a reviewed full tour yet. "
-               "The series waits and posts in the first slot after the video is marked ready.")
-        print(("::warning::" if os.environ.get("GITHUB_ACTIONS") else "") + msg)
-        return 0
     if dry:
-        print("Video: " + (os.path.basename(clip) if clip else "NOT READY (a live run would hold this post)"))
+        print("Video: " + ("reviewed full tour" if has_reviewed_video(post["day"]) else "NOT READY (a live run would hold this post)"))
         print("DRY RUN: nothing was posted.")
         print("---\n" + post["post"][:400] + "\n---")
         return 0
-
+    clip = video_for(post["day"]) if os.environ.get("ATTACH_VIDEO", "true").lower() != "false" else None
+    if require_ready and not clip and not dry:
+        msg = (f"Holding Day {post['day']} ({post['title']}): its demo video is not a reviewed full tour yet. "
+               "Later days will not be posted ahead of it. The series waits and posts in the first slot after the video is marked ready.")
+        print(("::warning::" if os.environ.get("GITHUB_ACTIONS") else "") + msg)
+        return 0
     author = person_urn(token, version)
     body = {
         "author": author,

@@ -1,6 +1,8 @@
 """Builds the public page served at anchit-tandon.com/linkedin-auto-pilot from posts.json, posted.json and the rendered videos."""
-import datetime, glob, json, os
+import datetime, glob, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, ROOT)
+from post import pending_posts
 SITE = os.path.join(ROOT, "linkedin-auto-pilot"); VIDEOS = os.path.join(SITE, "videos")
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30)); SLOTS = (2, 8, 14, 20)
 def next_slots(after, n):
@@ -13,10 +15,10 @@ def main():
     posts = json.load(open(os.path.join(ROOT, "posts.json"), encoding="utf-8"))
     posted = json.load(open(os.path.join(ROOT, "posted.json"), encoding="utf-8"))
     last = max([datetime.datetime.fromisoformat(v["at"]) for v in posted.values() if v.get("at")] or [datetime.datetime.now(IST)])
-    pending = sorted([p for p in posts if str(p["day"]) not in posted], key=lambda p: (not p.get("priority"), bool(p.get("defer")), p["day"]))   # same order as post.py
+    pending = pending_posts(posts, posted)
     when = dict(zip([p["day"] for p in pending], next_slots(max(last, datetime.datetime.now(IST)), len(pending))))
     data = []
-    for p in posts:
+    for p in sorted(posts, key=lambda p: p["day"]):
         x = {k: p[k] for k in ("day", "date", "title", "post", "first_comment")}
         v = posted.get(str(p["day"]))
         if v and v.get("skipped"):
@@ -26,7 +28,7 @@ def main():
             if v.get("urn"): x["live"] = "https://www.linkedin.com/feed/update/" + v["urn"] + "/"
             if v.get("at"): x["when"] = datetime.datetime.fromisoformat(v["at"]).astimezone(IST).strftime("%a %-d %b, %-I:%M %p IST")
         else:
-            x["status"] = "Scheduled"; x["when"] = when[p["day"]].strftime("%a %-d %b, %-I:%M %p IST")
+            x["status"] = "Queued"; x["when"] = "Earliest: " + when[p["day"]].strftime("%a %-d %b, %-I:%M %p IST") + " (estimate)"
         vids = sorted(glob.glob(os.path.join(VIDEOS, f"demo-{p['day']:02d}-*.mp4")))
         if vids:
             name = os.path.basename(vids[0]); x["ad"] = "/linkedin-auto-pilot/videos/" + name; x["adname"] = name

@@ -8,6 +8,7 @@
   TICK_SECRET               shared secret for the hourly tick
 """
 import base64
+import datetime
 import hashlib
 import hmac
 import json
@@ -126,9 +127,10 @@ class GitHubStore:
         status, _ = self.http("GET", f"https://api.github.com/repos/{self.repo}/contents/PAUSE", self._h())
         return status == 200
 
-    def mark_posted(self, day, title, text, urn, cycle):
+    def mark_posted(self, day, title, text, urn, cycle, at=None):
         posted = self.posted()
-        posted[str(day)] = {"date": cycle, "title": title, "urn": urn}
+        posted[str(day)] = {"date": cycle, "at": at or datetime.datetime.now(ap.IST).isoformat(timespec="seconds"),
+                            "title": title, "urn": urn}
         self._put("posted.json", posted, f"Posted Day {day}")
         queue = self.queue()
         for p in queue:
