@@ -25,7 +25,7 @@ class FakeStore:
     def state(self): return dict(self.st) if self.st else None
     def save_state(self, st): self.st = dict(st)
     def paused(self): return self.pause
-    def mark_posted(self, day, title, text, urn, cycle): self.p[str(day)] = {"urn": urn, "text": text}
+    def mark_posted(self, day, title, text, urn, cycle, at=None): self.p[str(day)] = {"urn": urn, "text": text, "at": at}
 
 
 class FakeWA:
@@ -192,6 +192,46 @@ class Replies(unittest.TestCase):
         r.on_message(OWNER, "button", "post", at(2, 1))
         self.assertEqual(r.tick(at(2, 9)), "blocked")
         self.assertEqual(published, [])
+
+
+class SequenceSafety(unittest.TestCase):
+    def prepare(self):
+        r, store, wa, published = make()
+        opened(store)
+        r.tick(at(2, 0))
+        r.on_message(OWNER, "button", "post", at(2, 2))
+        return r, store, wa, published
+
+    def test_stale_approval_cannot_republish_a_day_posted_by_the_scheduler(self):
+        r, store, _, published = self.prepare()
+        store.p["0"] = {"urn": "already-live", "at": at(2, 8).isoformat()}
+        self.assertEqual(r.tick(at(2, 9)), "stale")
+        self.assertEqual(published, [])
+
+    def test_approval_cannot_jump_an_earlier_unposted_day(self):
+        r, store, _, published = self.prepare()
+        store.st["day"] = 1
+        self.assertEqual(r.tick(at(2, 9)), "stale")
+        self.assertEqual(published, [])
+
+    def test_reply_cannot_publish_while_paused(self):
+        r, store, _, published = self.prepare()
+        store.pause = True
+        self.assertEqual(r.on_message(OWNER, "button", "post", at(2, 10)), "paused")
+        self.assertEqual(published, [])
+
+    def test_scheduler_and_review_share_the_slot_limit(self):
+        r, store, _, published = self.prepare()
+        store.p["25"] = {"urn": "other-post", "at": at(2, 8).isoformat()}
+        self.assertEqual(r.tick(at(2, 9)), "held")
+        self.assertEqual(published, [])
+
+    def test_review_records_timestamp_so_scheduler_cannot_post_again_in_same_slot(self):
+        r, store, _, published = self.prepare()
+        self.assertEqual(r.tick(at(2, 9)), "posted")
+        self.assertEqual(store.p["0"]["at"], at(2, 9).isoformat())
+        self.assertIsNone(rv.ap.pick(store.q, store.p, at(2, 10)))
+        self.assertEqual(len(published), 1)
 
 
 class LiveRefresh(unittest.TestCase):

@@ -51,11 +51,8 @@ class Review:
 
     # ---------------------------------------------------------------- helpers
     def _next_post(self):
-        queue, posted = self.store.queue(), self.store.posted()
-        for p in sorted(queue, key=lambda p: p["day"]):
-            if str(p["day"]) not in posted:
-                return p
-        return None
+        waiting = ap.pending_posts(self.store.queue(), self.store.posted())
+        return waiting[0] if waiting else None
 
     def _window_open(self, st, t):
         last = (st or {}).get("last_inbound")
@@ -80,7 +77,7 @@ class Review:
 
         if t.hour == 9:
             if st and st.get("cycle") == today and st.get("status") == "approved":
-                return self._do_publish(st)
+                return self._do_publish(st, t)
             if st and st.get("cycle") == today and st.get("status") in ("waiting", "draft"):
                 st["status"] = "held"
                 self.store.save_state(st)
@@ -149,7 +146,7 @@ class Review:
             st["status"] = "approved"
             self.store.save_state(st)
             if t.hour >= 9:
-                return self._do_publish(st)
+                return self._do_publish(st, t)
             self.wa.text(self.owner, f"Approved. Day {st['day']} goes live at 9:00 AM.")
             return "approved"
         if command == "skip":
@@ -174,13 +171,22 @@ class Review:
         return "revised"
 
     # --------------------------------------------------------------- publish
-    def _do_publish(self, st):
+    def _do_publish(self, st, now):
+        if self.store.paused():
+            return "paused"
+        queue, posted = self.store.queue(), self.store.posted()
+        waiting = ap.pending_posts(queue, posted)
+        if not waiting or waiting[0]["day"] != st["day"]:
+            self.wa.text(self.owner, f"Day {st['day']} is no longer the next unposted day. Nothing was posted; a fresh review is needed.")
+            return "stale"
+        if ap.pick(queue, posted, now) is None:
+            return "held"
         problems = ap.guard({"post": st["draft"]})
         if problems:
             self.wa.text(self.owner, "Blocked before posting: " + "; ".join(problems))
             return "blocked"
         urn = self.publish(st["draft"])
-        self.store.mark_posted(st["day"], st["title"], st["draft"], urn, st["cycle"])
+        self.store.mark_posted(st["day"], st["title"], st["draft"], urn, now.date().isoformat(), at=now.isoformat(timespec="seconds"))
         st["status"] = "posted"
         self.store.save_state(st)
         link = f"https://www.linkedin.com/feed/update/{urn}/" if urn else "(link unavailable)"

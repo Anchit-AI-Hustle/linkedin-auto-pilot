@@ -60,7 +60,7 @@ footer{color:var(--muted);font-size:.85rem;margin-top:24px}
 <section class="how" aria-label="How this was built"><h2>How it was built</h2><ol><li><b>One queue.</b> All posts live in one file, written to a fixed case-study format and checked by tests before anything goes out.</li><li><b>A content guard.</b> Every post is checked before publishing: no unfinished placeholders, broken formatting or posts over LinkedIn's limit.</li><li><b>Real demos, not mock-ups.</b> Each video captures the live product frame by frame on desktop and mobile, with captions taken from the product itself and original music.</li><li><b>Every 6 hours.</b> A scheduled workflow publishes the next post through LinkedIn's official API, and never posts twice in one slot.</li><li><b>Built with Claude.</b> Writing, fact-checking against each product, the videos and the workflow were built with Claude, Anthropic's AI.</li></ol><p><a href="https://anchit-tandon.com">See all my live products →</a></p></section>
 <div class="bar"><nav class="days" id="days" aria-label="Jump to a day"></nav><button class="toggle" id="all" type="button" aria-pressed="false">Expand all</button></div>
 <main id="feed"></main>
-<footer>Source: posts.json in Anchit-AI-Hustle/linkedin-auto-pilot. Day 0 goes out when you press Start posting, then one a day at 9:00 AM IST.</footer>
+<footer>Source: posts.json in Anchit-AI-Hustle/linkedin-auto-pilot. Unposted days go out in numeric order, at most once per slot at 2 AM, 8 AM, 2 PM and 8 PM IST. A day awaiting its reviewed video holds the queue. Slot estimates can move while a day is held.</footer>
 </div>
 <script id="data" type="application/json">__DATA__</script>
 <script>

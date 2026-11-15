@@ -20,18 +20,22 @@ permissions:
   contents: write
   issues: write
 
-concurrency: linkedin-post
+concurrency:
+  group: linkedin-post
+  cancel-in-progress: false
 
 jobs:
   post:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # read the latest saved posting record after acquiring the lock
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Run tests
-        run: python -W ignore test_post.py
+        run: python -W ignore -m unittest discover -v
       - name: Publish today's post
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}

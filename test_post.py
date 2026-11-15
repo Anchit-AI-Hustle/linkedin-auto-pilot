@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import post as ap
@@ -334,6 +335,7 @@ class Readiness(unittest.TestCase):
     def run_live(self, verified):
         import tempfile, shutil
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
         for f in ("post.py", "posts.json"):
             shutil.copy(os.path.join(HERE, f), tmp)
         json.dump({}, open(os.path.join(tmp, "posted.json"), "w"))
@@ -343,7 +345,9 @@ class Readiness(unittest.TestCase):
             json.dump(["demo-00-23-products.mp4"], open(os.path.join(vids, "verified.json"), "w"))
         e = dict(os.environ, DRY_RUN="false", LINKEDIN_ACCESS_TOKEN="fake", POST_AT="2030-01-01T08:05:00+05:30",
                  USE_2160P="false", LINKEDIN_VERSION="202605")
-        r = subprocess.run([sys.executable, os.path.join(tmp, "post.py")], env=e, capture_output=True, text=True)
+        # Stop at a fake LinkedIn boundary; tests must never contact the real API.
+        script = "import sys, post; post.person_urn = lambda *a: sys.exit('Fake LinkedIn reached'); post.main()"
+        r = subprocess.run([sys.executable, "-c", script], cwd=tmp, env=e, capture_output=True, text=True)
         return r, json.load(open(os.path.join(tmp, "posted.json")))
 
     def test_holds_when_video_not_reviewed(self):
@@ -353,8 +357,9 @@ class Readiness(unittest.TestCase):
         self.assertEqual(posted, {})
 
     def test_reviewed_video_proceeds_to_publishing(self):
-        r, posted = self.run_live(verified=True)       # fake token: it gets past the gate and fails at LinkedIn
+        r, posted = self.run_live(verified=True)
         self.assertNotIn("Holding", r.stdout)
+        self.assertIn("Fake LinkedIn reached", r.stderr)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(posted, {})
 
@@ -382,48 +387,43 @@ def self_T(s):
     return datetime.datetime.fromisoformat(s)
 
 
-class Defer(unittest.TestCase):
-    def test_deferred_posts_go_after_everything_else(self):
+class SequentialOrder(unittest.TestCase):
+    def test_legacy_defer_flags_cannot_move_days_to_the_end(self):
         q = [{"day": d, "post": "x", "defer": d in (7, 10)} for d in range(6, 12)]
         done = {"6": {"at": "2030-01-01T02:05:00+05:30"}}
         order = []
         for slot in ("08", "14", "20"):
             p = ap.pick(q, done, datetime.datetime.fromisoformat(f"2030-01-01T{slot}:20:00+05:30"))
             order.append(p["day"]); done[str(p["day"])] = {"at": f"2030-01-01T{slot}:20:00+05:30"}
-        self.assertEqual(order, [8, 9, 11])
+        self.assertEqual(order, [7, 8, 9])
         p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-02T02:20:00+05:30"))
-        self.assertEqual(p["day"], 7)
+        self.assertEqual(p["day"], 10)
 
-
-class NotBlocked(unittest.TestCase):
-    """One post waiting for its video must never stall the posts behind it."""
-    def test_a_post_without_a_reviewed_video_is_passed_over(self):
-        q = [{"day": d, "post": "x"} for d in range(14, 18)]
-        ready = lambda p: p["day"] in (15, 17)
-        now = datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30")
-        self.assertEqual(ap.pick(q, {}, now, ready=ready)["day"], 15)
-        done = {"15": {"at": "2030-01-01T08:20:00+05:30"}}
-        later = datetime.datetime.fromisoformat("2030-01-01T14:20:00+05:30")
-        self.assertEqual(ap.pick(q, done, later, ready=ready)["day"], 17)
-        self.assertEqual(ap.pick(q, done, later, ready=lambda p: True)["day"], 14)   # goes out as soon as it is ready
-
-    def test_when_nothing_is_ready_the_next_post_is_named_so_the_run_can_say_why(self):
-        q = [{"day": d, "post": "x"} for d in range(14, 16)]
-        now = datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30")
-        self.assertEqual(ap.pick(q, {}, now, ready=lambda p: False)["day"], 14)
-
-
-class Priority(unittest.TestCase):
-    def test_a_priority_post_goes_out_in_the_very_next_slot(self):
+    def test_legacy_priority_flags_cannot_jump_the_queue(self):
         q = [{"day": d, "post": "x", "defer": d == 7} for d in range(6, 12)] + [{"day": 25, "post": "x", "priority": True}]
         done = {"6": {"at": "2030-01-01T02:05:00+05:30"}}
         p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30"))
-        self.assertEqual(p["day"], 25)
-        done["25"] = {"at": "2030-01-01T08:20:00+05:30"}
+        self.assertEqual(p["day"], 7)
+        done["7"] = {"at": "2030-01-01T08:20:00+05:30"}
         p = ap.pick(q, done, datetime.datetime.fromisoformat("2030-01-01T14:20:00+05:30"))
         self.assertEqual(p["day"], 8)                              # then the series carries on in order
 
-    def test_the_bonus_post_is_queued_first_and_passes_the_guard(self):
+    def test_current_queue_recovers_all_holes_without_reposting_or_unskipping(self):
+        queue = json.load(open(os.path.join(HERE, "posts.json"), encoding="utf-8"))
+        # Freeze the incident's history so later successful posts do not break CI.
+        missing = {7, 10, 13, 16, 19, 20, 22, 24}
+        posted = {str(d): {"urn": f"urn:li:share:{d}"} for d in range(26) if d not in missing}
+        posted["17"] = {"skipped": True}
+        self.assertEqual([p["day"] for p in ap.pending_posts(list(reversed(queue)), posted)],
+                         [7, 10, 13, 16, 19, 20, 22, 24])
+        self.assertTrue(all("defer" not in p and "priority" not in p for p in queue))
+
+    def test_duplicate_or_non_numeric_days_are_rejected(self):
+        for days in ([1, 1], [1, "2"], [True], [-1]):
+            with self.subTest(days=days), self.assertRaises(ValueError):
+                ap.pending_posts([{"day": d} for d in days], {})
+
+    def test_the_bonus_post_passes_the_guard(self):
         with open(os.path.join(HERE, "posts.json"), encoding="utf-8") as fh:
             queue = json.load(fh)
         with open(os.path.join(HERE, "posted.json"), encoding="utf-8") as fh:
@@ -434,13 +434,66 @@ class Priority(unittest.TestCase):
         self.assertIn("6 to 7 hours", bonus[0]["post"])
         self.assertEqual(ap.site_url(bonus[0]), "https://find-a-flatmate.anchit-tandon.com")
         self.assertEqual(bonus[0]["post"].count("#"), 5)
-        if str(bonus[0]["day"]) not in posted:
-            nxt = ap.pick(queue, {k: v for k, v in posted.items() if not v.get("at")}, datetime.datetime.fromisoformat("2030-01-01T08:20:00+05:30"))
-            self.assertEqual(nxt["title"], "Find a Flatmate")
-
     def test_books_on_amazon_stays_out(self):
         with open(os.path.join(HERE, "posted.json"), encoding="utf-8") as fh:
             self.assertTrue(json.load(fh)["17"].get("skipped"))
+
+
+class SequencePublishing(unittest.TestCase):
+    """Exercise the real selection, readiness gate and state writes with fake LinkedIn."""
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.queue = [{"day": d, "title": f"Product {d}", "post": f"Product {d}",
+                       "defer": d == 7, "priority": d == 25} for d in (25, 10, 8, 7)]
+        self.state = os.path.join(self.tmp.name, "posted.json")
+        self.queue_path = os.path.join(self.tmp.name, "posts.json")
+        json.dump(self.queue, open(self.queue_path, "w"))
+        json.dump({}, open(self.state, "w"))
+        for name, value in (("STATE", self.state), ("QUEUE", self.queue_path),
+                            ("PAUSE", os.path.join(self.tmp.name, "PAUSE")), ("AUTO_COMMENT", False)):
+            p = patch.object(ap, name, value); p.start(); self.addCleanup(p.stop)
+        p = patch.dict(os.environ, {"DRY_RUN": "false", "LINKEDIN_ACCESS_TOKEN": "fake",
+                                   "POST_AT": "2030-01-01T08:20:00+05:30", "FORCE": "false",
+                                   "ATTACH_VIDEO": "true", "REQUIRE_READY": "true"})
+        p.start(); self.addCleanup(p.stop)
+        p = patch.object(ap, "call", return_value=(201, {"x-restli-id": "urn:li:share:test"}, {}))
+        self.api = p.start(); self.addCleanup(p.stop)
+        p = patch.object(ap, "person_urn", return_value="urn:li:person:test")
+        p.start(); self.addCleanup(p.stop)
+
+    def test_unready_first_day_holds_even_when_later_days_have_videos(self):
+        with patch.object(ap, "video_for", side_effect=lambda d: None if d == 7 else "later.mp4") as video:
+            self.assertEqual(ap.main(), 0)
+            os.environ.update(POST_AT="2030-01-01T14:20:00+05:30", FORCE="true")
+            self.assertEqual(ap.main(), 0)
+        self.assertEqual([c.args[0] for c in video.call_args_list], [7, 7])
+        self.api.assert_not_called()
+        self.assertEqual(json.load(open(self.state)), {})
+
+    def test_failed_upload_retries_same_day_then_advances_in_order(self):
+        with patch.object(ap, "video_for", return_value="first.mp4"), patch.object(ap, "upload_video", return_value=None):
+            with self.assertRaisesRegex(SystemExit, "Day 7 not posted"):
+                ap.main()
+        self.api.assert_not_called()
+        self.assertEqual(json.load(open(self.state)), {})
+        with patch.object(ap, "video_for", return_value="first.mp4"), patch.object(ap, "upload_video", return_value="urn:li:video:test"):
+            self.assertEqual(ap.main(), 0)
+            self.assertEqual(ap.main(), 0)  # same-slot retry must not publish again
+            self.assertEqual(self.api.call_count, 1)
+            os.environ["POST_AT"] = "2030-01-01T14:20:00+05:30"
+            self.assertEqual(ap.main(), 0)
+        self.assertEqual(list(json.load(open(self.state))), ["7", "8"])
+
+    def test_dry_run_keeps_first_day_and_never_downloads_or_publishes(self):
+        os.environ["DRY_RUN"] = "true"
+        with patch.object(ap, "video_for") as download, patch.object(ap, "has_reviewed_video", return_value=False) as ready:
+            self.assertEqual(ap.main(), 0)
+        ready.assert_called_once_with(7)
+        download.assert_not_called()
+        self.api.assert_not_called()
+        self.assertEqual(json.load(open(self.state)), {})
 
 class RetryTests(unittest.TestCase):
     """Passing LinkedIn errors are retried, but publishing is never repeated when it may have gone out."""
