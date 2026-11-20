@@ -124,6 +124,7 @@ async def capture(browser, url, spec, actions, frames_dir, want_caps):
     await pg.add_style_tag(content="*{scroll-behavior:auto!important} ::-webkit-scrollbar{display:none}")
     await pg.wait_for_timeout(500)
     n = 0; caps = []; t = 0.0
+    bad = [0]                                                       # screenshots that failed in a row
     async def shot():
         nonlocal n
         await pg.screenshot(path=f"{frames_dir}/{n:05d}.jpg", type="jpeg", quality=92); n += 1
@@ -343,12 +344,15 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
     n = 0; marks = []; t = 0.0
     budget = float(os.environ.get("TOUR_SECONDS", "100")); per = max(2.4, min(5.0, budget / max(1, len(scenes))))
     XF = 8                                                         # cross-fade frames between scenes
+    bad = [0]                                                       # screenshots that failed in a row
     async def shot():
         nonlocal n
         path = f"{frames_dir}/{n:05d}.jpg"
         try:
-            await asyncio.wait_for(pg.screenshot(path=path, type="jpeg", quality=92, timeout=15000), 20)
+            if bad[0] >= 2: raise RuntimeError("page is not painting")       # stop waiting on a page that hangs; reuse the last frame
+            await asyncio.wait_for(pg.screenshot(path=path, type="jpeg", quality=92, timeout=15000), 20); bad[0] = 0
         except Exception:
+            bad[0] += 1
             if n: shutil.copyfile(f"{frames_dir}/{n-1:05d}.jpg", path)       # keep the last good frame
             else: Image.new("RGB", (spec["w"] * spec["dpr"], spec["h"] * spec["dpr"]), (10, 12, 22)).save(path, quality=92)
         n += 1
@@ -356,6 +360,7 @@ async def run_tour(browser, cfg, spec, scenes, frames_dir):
         try: return await asyncio.wait_for(pg.evaluate(expr), 8)
         except Exception: return default
     for i, sc in enumerate(scenes):
+        bad[0] = 0                                                  # every scene gets a fresh chance to paint
         sec = sc.get("sec") or (per + 1.5 if sc["kind"] == "home" else per)
         if sc["kind"] == "show":                                    # bring a section of the current page into view
             try:

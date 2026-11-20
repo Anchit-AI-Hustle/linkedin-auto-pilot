@@ -546,6 +546,12 @@
   "site": "https://anchit-tandon.com/jobhunt",
   "scenes": [
    {
+    "click": "Set up 1-click apply",
+    "label": "Add your background once",
+    "sec": 5,
+    "scroll": false
+   },
+   {
     "click": "Search jobs →",
     "fill": {
      "input[placeholder*='Product Manager']": "Product Manager, AI",
@@ -556,9 +562,19 @@
     "scroll": false
    },
    {
-    "show": "Apply",
-    "label": "Matched roles, ready to apply",
+    "show": "Openings for",
+    "label": "Live openings from real job boards",
+    "sec": 5
+   },
+   {
+    "show": "Open posting",
+    "label": "Open the posting, or tailor and apply",
     "sec": 6
+   },
+   {
+    "show": "JobHunt is a live demo",
+    "label": "Free to use, no sign-in",
+    "sec": 4
    }
   ]
  },
@@ -631,8 +647,14 @@
   "scenes": [
    {
     "click": "Wikipedia",
-    "label": "Any website, floating in your room",
-    "sec": 6,
+    "label": "Pick a page and set up in five steps",
+    "sec": 4.5,
+    "scroll": false
+   },
+   {
+    "click": "Got it",
+    "label": "The page is mirrored to float in your room",
+    "sec": 5.5,
     "scroll": false
    },
    {
