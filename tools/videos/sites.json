@@ -277,8 +277,77 @@
   "name": "AI TeleSuite",
   "hook": "AI that listens to every sales call so managers can coach",
   "caption": "Assisted Sales: Rs 15L to Rs 80L a month",
-  "url_text": "ai-tele-suite.anchit-tandon.com",
-  "site": "https://ai-tele-suite.anchit-tandon.com"
+  "url_text": "ai-tele-suite.anchit-tandon.com/demo",
+  "site": "https://ai-tele-suite.anchit-tandon.com/demo",
+  "scenes": [
+   {
+    "url": "/call-scoring-dashboard",
+    "label": "Every call scored, not a handful",
+    "sec": 5,
+    "scroll": false
+   },
+   {
+    "url": "/call-scoring",
+    "label": "Upload a call, get a coaching report",
+    "sec": 4.5
+   },
+   {
+    "url": "/transcription-dashboard",
+    "label": "Transcripts with who said what",
+    "sec": 4.5,
+    "scroll": false
+   },
+   {
+    "url": "/combined-call-analysis-dashboard",
+    "label": "Patterns across a batch of calls",
+    "sec": 4.5,
+    "scroll": false
+   },
+   {
+    "url": "/pitch-generator",
+    "label": "A pitch for each customer cohort",
+    "sec": 4.5
+   },
+   {
+    "url": "/rebuttal-generator",
+    "label": "Answers to live objections",
+    "sec": 4
+   },
+   {
+    "url": "/create-training-deck",
+    "label": "Training decks from your own material",
+    "sec": 4.5
+   },
+   {
+    "url": "/knowledge-base",
+    "label": "One knowledge base behind every tool",
+    "sec": 4.5
+   },
+   {
+    "url": "/voice-sales-agent",
+    "label": "An AI voice agent for sales calls",
+    "sec": 4.5
+   },
+   {
+    "url": "/voice-support-agent",
+    "label": "And one for support",
+    "sec": 4
+   },
+   {
+    "url": "/data-analysis",
+    "label": "Ask questions of your call data",
+    "sec": 4.5
+   },
+   {
+    "url": "/activity-dashboard",
+    "label": "Everything the team ran, in one log",
+    "sec": 4.5,
+    "scroll": false
+   }
+  ],
+  "skip": [
+   "/"
+  ]
  },
  "8": {
   "label": "PROJECT 8/23",
